@@ -1,0 +1,4 @@
+project_id = "dwmafrricsnsteecpiti"
+
+[functions.id-ocr]
+verify_jwt = false
