@@ -3,25 +3,36 @@ import { useReportsData } from "@/db/useDb";
 import { csvDownload, fmtDate, money, PageTitle } from "@/pages/pageUtils";
 import { fullName } from "@/lib/memberWorkflow";
 
+const safe = (value: unknown) => String(value ?? "").split("/").join(" ");
+
 export default function Reports() {
   const data = useReportsData();
   
   const exportMembers = () => csvDownload("fiches_membres.csv", data.members.map((m) => ({
-    identifiant: m.member_id,
-    nom: fullName(m),
-    telephone: m.phone,
-    campement: m.campement,
-    tutel: fullName(m.guardian),
-    ayants_droit: m.secondary_members.map(fullName).join(" et "),
+    identifiant: safe(m.member_id),
+    nom: safe(fullName(m)),
+    telephone: safe(m.phone),
+    whatsapp: safe(m.whatsapp),
+    campement: safe(m.campement),
+    sous_prefecture: safe(m.sous_prefecture),
+    statut: safe(m.status),
+    tutel: safe(fullName(m.guardian)),
+    telephone_tutel: safe(m.guardian?.phone),
+    ayants_droit: safe(m.secondary_members.map((p) => `${fullName(p)} (${p.relationship || "Ayant droit"})`).join(" et ")),
     adhesion: money(m.adhesion_amount || 0),
+    adhesion_payee: m.adhesion_paid ? "oui" : "non",
+    personnes_couvertes: m.total_covered_persons,
     inscription: fmtDate(m.registration_date)
   })));
 
   const exportLate = () => csvDownload("retards_cotisations.csv", data.contributions.filter((c) => c.status !== "payé").map((c) => ({
-    membre: c.member_name,
+    membre: safe(c.member_name),
+    identifiant: safe(c.member_id),
+    deces: safe(data.deaths.find((d) => d.id === c.death_id)?.deceased_name),
     attendu: money(c.expected_amount),
     paye: money(c.amount),
-    reste: money(c.expected_amount - c.amount)
+    reste: money(Math.max(c.expected_amount - c.amount, 0)),
+    statut: safe(c.status)
   })));
 
   const exportBooklet = () => {
@@ -30,20 +41,24 @@ export default function Reports() {
     data.members.forEach(m => {
       rows.push({
         type: "Titulaire",
-        id: m.member_id,
-        nom: fullName(m),
-        telephone: m.phone,
-        campement: m.campement,
-        statut: m.status
+          id: safe(m.member_id),
+          nom: safe(fullName(m)),
+          telephone: safe(m.phone),
+          campement: safe(m.campement),
+          tutel: safe(fullName(m.guardian)),
+          montant_adhesion: money(m.adhesion_amount || 0),
+          statut: safe(m.status)
       });
       m.secondary_members.forEach(s => {
         rows.push({
           type: "Ayant-droit",
-          id: `AD-${m.member_id}`,
-          nom: fullName(s),
+            id: safe(`AD-${m.member_id}`),
+            nom: safe(fullName(s)),
           telephone: "-",
-          campement: m.campement,
-          statut: s.status
+            campement: safe(m.campement),
+            tutel: safe(fullName(m.guardian)),
+            montant_adhesion: money(m.adhesion_amount || 0),
+            statut: safe(s.status)
         });
       });
     });
