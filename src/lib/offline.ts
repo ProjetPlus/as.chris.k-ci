@@ -46,7 +46,7 @@ export function enqueue(entry: Omit<QueueEntry, "id" | "createdAt" | "attempts">
 }
 
 export function enqueueMemberBundle(member: DbMember) {
-  return enqueue({ op: "batch", table: "member_bundle", payload: { member } });
+  return enqueue({ op: "batch", table: "member_bundle", payload: { member: sanitizeMember(member) } });
 }
 
 export function enqueueDeathPromotion(payload: { updatedDeceased: DbMember; successor?: DbMember | null; death: DbDeath; contributions: DbContribution[] }) {
