@@ -38,7 +38,7 @@ export function OnlineIndicator() {
           title={`Realtime: ${rt.connected}/${rt.total} canaux connectés`}
         >
           <Radio className={`h-3 w-3 ${rt.connected === rt.total ? "" : "animate-pulse"}`} />
-          {rt.connected}/{rt.total}
+          {rt.connected} sur {rt.total}
         </span>
       )}
       {queueCount > 0 && (
