@@ -29,9 +29,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const cleanUsername = username.trim();
     if (!cleanUsername || !password) return { ok: false, error: "Identifiant et mot de passe requis" };
 
-    if (!navigator.onLine) {
-      const offlineUser = await authenticateOffline(cleanUsername, password);
-      if (!offlineUser) return { ok: false, error: "Compte non disponible hors ligne sur cet appareil" };
+    const offlineUser = await authenticateOffline(cleanUsername, password);
+    if (!navigator.onLine && offlineUser) {
       setUser(offlineUser as AppUser);
       return { ok: true };
     }
@@ -53,7 +52,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(nextUser);
       return { ok: true };
     } catch {
-      const offlineUser = await authenticateOffline(cleanUsername, password);
       if (!offlineUser) return { ok: false, error: "Connexion impossible. Réessayez avec un compte déjà utilisé ici." };
       setUser(offlineUser as AppUser);
       return { ok: true };
