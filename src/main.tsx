@@ -5,6 +5,7 @@ import { seedDefaultAdmin, flushQueue, startAutoSync, onSyncEvent } from "@/lib/
 import { supabase } from "@/integrations/supabase/client";
 import { processPendingPhotos } from "@/lib/photoWorker";
 import { toast } from "sonner";
+import { registerAppServiceWorker } from "@/lib/registerServiceWorker";
 
 // Toast per synchronized op + summary (we never drop items — offline can last months).
 onSyncEvent((e) => {
@@ -42,23 +43,7 @@ try {
 // (the seed has been removed for security; this only purges legacy cache).
 Promise.resolve().then(() => seedDefaultAdmin()).catch(() => {});
 
-// Register Service Worker only outside Lovable preview/iframe contexts
-const isInIframe = (() => {
-  try { return window.self !== window.top; } catch { return true; }
-})();
-const isPreviewHost =
-  window.location.hostname.includes("id-preview--") ||
-  window.location.hostname.includes("lovableproject.com");
-
-if ("serviceWorker" in navigator) {
-  if (isPreviewHost || isInIframe) {
-    navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
-  } else if (import.meta.env.PROD) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js").catch((e) => console.warn("SW failed", e));
-    });
-  }
-}
+registerAppServiceWorker().catch(() => {});
 
 // Auto-sync loop: retry failed mutations periodically + on every online event.
 startAutoSync(supabase, 15000);
