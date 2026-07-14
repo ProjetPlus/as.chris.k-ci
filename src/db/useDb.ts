@@ -5,6 +5,7 @@ import { enqueue, enqueueDeathPromotion, enqueueMemberBundle, flushQueue } from 
 import { DEFAULT_SETTINGS, buildDeathPromotionBundle, fullName, makeMember, nowIso, uuid } from "@/lib/memberWorkflow";
 
 const SNAPSHOT_KEY = "aschrisk.db.snapshot.v5";
+const CREATE_MEMBER_EVENT = "aschrisk:create-member";
 
 type Snapshot = { settings: DbSettings; members: DbMember[]; deaths: DbDeath[]; contributions: DbContribution[]; treasury: DbTreasury; users: AppUser[] };
 
@@ -18,6 +19,21 @@ function readSnapshot(): Snapshot {
 function writeSnapshot(next: Snapshot) {
   localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(next));
   window.dispatchEvent(new Event("aschrisk:db"));
+}
+
+const sanitizeArray = <T,>(value: T[] | null | undefined): T[] => Array.isArray(value) ? value : [];
+const sanitizeGuardian = (value: DbMember["guardian"] | null | undefined): DbMember["guardian"] => value || {};
+
+function normalizeMemberRow(member: DbMember): DbMember {
+  const secondary = sanitizeArray(member.secondary_members).map((p) => ({ ...p, id: p.id || uuid(), status: p.status || "actif" as const }));
+  return {
+    ...member,
+    secondary_members: secondary,
+    guardian: sanitizeGuardian(member.guardian),
+    total_covered_persons: 1 + secondary.length,
+    adhesion_amount: Number(member.adhesion_amount || DEFAULT_SETTINGS.adhesion_fee),
+    contribution_status: member.contribution_status || "à_jour",
+  };
 }
 
 function patchSnapshot(mutator: (snap: Snapshot) => Snapshot) {
@@ -50,7 +66,8 @@ export async function refreshFromServer() {
     safeFetch<DbContribution>("contributions", snap.contributions),
     safeFetch<DbTreasury>("treasury", [snap.treasury]),
   ]);
-  const next = { ...snap, settings: settingsRows[0] || snap.settings, members, deaths, contributions, treasury: treasuryRows[0] || recalcTreasury({ ...snap, members, deaths, contributions }) };
+  const normalizedMembers = members.map(normalizeMemberRow);
+  const next = { ...snap, settings: settingsRows[0] || snap.settings, members: normalizedMembers, deaths, contributions, treasury: treasuryRows[0] || recalcTreasury({ ...snap, members: normalizedMembers, deaths, contributions }) };
   writeSnapshot(next);
   return next;
 }
@@ -81,6 +98,16 @@ async function persist(table: TableName, payload: any, op: "insert" | "update" |
   if (error) enqueue({ op: "update", table, payload });
 }
 
+export function createMemberOfflineFirst(input: Partial<DbMember>) {
+  const current = readSnapshot();
+  const member = normalizeMemberRow(makeMember(input, current.members, current.settings));
+  patchSnapshot((s) => ({ ...s, members: [member, ...s.members], treasury: recalcTreasury({ ...s, members: [member, ...s.members] }) }));
+  enqueueMemberBundle(member);
+  if (navigator.onLine) flushQueue(supabase, { force: true }).catch(() => {});
+  window.dispatchEvent(new CustomEvent(CREATE_MEMBER_EVENT, { detail: member }));
+  return member;
+}
+
 export function useSettings() {
   const snap = useSnapshot();
   const updateSettings = async (patch: Partial<DbSettings>) => {
@@ -94,18 +121,22 @@ export function useSettings() {
 export function useMembers() {
   const snap = useSnapshot();
   const createMember = async (input: Partial<DbMember>) => {
-    const member = makeMember(input, readSnapshot().members, readSnapshot().settings);
+    const member = normalizeMemberRow(makeMember(input, readSnapshot().members, readSnapshot().settings));
     patchSnapshot((s) => ({ ...s, members: [member, ...s.members], treasury: recalcTreasury({ ...s, members: [member, ...s.members] }) }));
-    if (!navigator.onLine) enqueueMemberBundle(member); else await persist("members", member);
+    enqueueMemberBundle(member);
+    if (navigator.onLine) await flushQueue(supabase, { force: true });
     return member;
   };
   const updateMember = async (id: string, patch: Partial<DbMember>) => {
     let member: DbMember | undefined;
     patchSnapshot((s) => {
-      const members = s.members.map((m) => m.id === id ? (member = makeMember({ ...m, ...patch, id: m.id, member_id: m.member_id, created_at: m.created_at }, s.members, s.settings))! : m);
+      const members = s.members.map((m) => m.id === id ? (member = normalizeMemberRow(makeMember({ ...m, ...patch, id: m.id, member_id: m.member_id, created_at: m.created_at }, s.members, s.settings)))! : m);
       return { ...s, members, treasury: recalcTreasury({ ...s, members }) };
     });
-    if (member) { if (!navigator.onLine) enqueueMemberBundle(member); else await persist("members", member); }
+    if (member) {
+      enqueueMemberBundle(member);
+      if (navigator.onLine) await flushQueue(supabase, { force: true });
+    }
     return member;
   };
   const deleteMember = async (id: string) => {

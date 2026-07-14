@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { Component, lazy, Suspense, type ReactNode } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -71,7 +71,8 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const location = useLocation();
+  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   return <>{children}</>;
 }
 
@@ -104,23 +105,36 @@ const AppRoutes = () => {
       <ChunkErrorBoundary>
       <Suspense fallback={<RouteFallback />}>
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/tableau-de-bord" element={<Navigate to="/dashboard" replace />} />
             <Route path="/members" element={<Members />} />
+            <Route path="/membres" element={<Navigate to="/members" replace />} />
             <Route path="/members/:id" element={<MemberProfile />} />
+            <Route path="/membres/:id" element={<MemberProfile />} />
             <Route path="/register" element={<RegisterStep1 />} />
+            <Route path="/inscription" element={<Navigate to="/register" replace />} />
             <Route path="/register/step2" element={<RegisterStep2 />} />
             <Route path="/deaths" element={<Deaths />} />
+            <Route path="/deces" element={<Navigate to="/deaths" replace />} />
             <Route path="/contributions" element={<Contributions />} />
+            <Route path="/cotisations" element={<Navigate to="/contributions" replace />} />
             <Route path="/treasury" element={<Treasury />} />
+            <Route path="/caisse" element={<Navigate to="/treasury" replace />} />
             <Route path="/scanner" element={<Scanner />} />
+            <Route path="/scan" element={<Navigate to="/scanner" replace />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/rapports" element={<Navigate to="/reports" replace />} />
             <Route path="/cards" element={<Cards />} />
+            <Route path="/cartes" element={<Navigate to="/cards" replace />} />
             <Route path="/access" element={<AccessManagement />} />
+            <Route path="/acces" element={<Navigate to="/access" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/parametres" element={<Navigate to="/settings" replace />} />
             <Route path="/sync" element={<Sync />} />
+            <Route path="/sauvegarde" element={<Navigate to="/sync" replace />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

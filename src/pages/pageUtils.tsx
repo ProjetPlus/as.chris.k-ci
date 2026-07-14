@@ -12,15 +12,20 @@ export function StatCard({ label, value }: { label: string; value: string | numb
 export function fmtDate(value?: string) {
   if (!value) return "";
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value.split("/").join(".");
+  if (Number.isNaN(d.getTime())) return value.replace(/\//g, ".");
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
 }
 
-export function money(value: number) { return formatCurrency(value).split("/").join(" "); }
+export function money(value: number) { 
+  // formatCurrency uses fr-FR which produces spaces or non-breaking spaces as separators.
+  // We ensure no slashes exist.
+  return formatCurrency(value).replace(/\//g, " "); 
+}
 
 export function csvDownload(filename: string, rows: Array<Record<string, unknown>>) {
-  const headers = Object.keys(rows[0] || { message: "Aucune donnée" });
-  const clean = (v: unknown) => String(v ?? "").split("/").join(" ").split("\n").join(" ").split(";").join(",");
+  if (rows.length === 0) return;
+  const headers = Object.keys(rows[0]);
+  const clean = (v: unknown) => String(v ?? "").replace(/\//g, " ").replace(/\n/g, " ").replace(/;/g, ",");
   const body = [headers.join(";"), ...rows.map((row) => headers.map((h) => clean(row[h])).join(";"))].join("\n");
   const blob = new Blob([body], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);

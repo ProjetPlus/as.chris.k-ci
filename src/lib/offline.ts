@@ -46,7 +46,7 @@ export function enqueue(entry: Omit<QueueEntry, "id" | "createdAt" | "attempts">
 }
 
 export function enqueueMemberBundle(member: DbMember) {
-  return enqueue({ op: "batch", table: "member_bundle", payload: { member } });
+  return enqueue({ op: "batch", table: "member_bundle", payload: { member: sanitizeMember(member) } });
 }
 
 export function enqueueDeathPromotion(payload: { updatedDeceased: DbMember; successor?: DbMember | null; death: DbDeath; contributions: DbContribution[] }) {
@@ -64,12 +64,20 @@ export function getQueueStats() {
   };
 }
 
-function sanitizeMember(member: DbMember) {
+export function sanitizeMember(member: DbMember): DbMember {
+  const secondary = (member.secondary_members || []).map((m: any) => ({
+    ...m,
+    id: m.id || id(),
+    status: m.status || "actif"
+  }));
   return {
     ...member,
-    secondary_members: member.secondary_members || [],
-    guardian: member.guardian || {},
-    total_covered_persons: 1 + (member.secondary_members || []).length,
+    secondary_members: secondary,
+    guardian: { 
+      ...(member.guardian || {}), 
+      id: member.guardian?.id || id() 
+    },
+    total_covered_persons: 1 + secondary.length,
   };
 }
 
@@ -79,7 +87,7 @@ async function upsertMemberBundle(client: SupabaseClient, member: DbMember) {
 }
 
 async function upsertDeathPromotion(client: SupabaseClient, payload: { updatedDeceased: DbMember; successor?: DbMember | null; death: DbDeath; contributions: DbContribution[] }) {
-  const memberRows = [sanitizeMember(payload.updatedDeceased), payload.successor ? sanitizeMember(payload.successor) : null].filter(Boolean);
+  const memberRows = [sanitizeMember(payload.updatedDeceased), payload.successor ? sanitizeMember(payload.successor) : null].filter(Boolean) as DbMember[];
   const { error: membersError } = await client.from("members").upsert(memberRows, { onConflict: "id" });
   if (membersError) throw membersError;
   const { error: deathError } = await client.from("deaths").upsert(payload.death, { onConflict: "id" });
@@ -93,13 +101,20 @@ async function upsertDeathPromotion(client: SupabaseClient, payload: { updatedDe
 async function flushEntry(client: SupabaseClient, entry: QueueEntry) {
   if (entry.table === "member_bundle") return upsertMemberBundle(client, entry.payload.member);
   if (entry.table === "death_promotion") return upsertDeathPromotion(client, entry.payload);
+  
   const table = entry.table as TableName;
   if (entry.op === "delete") {
     const { error } = await client.from(table).delete().eq("id", entry.payload.id);
     if (error) throw error;
     return;
   }
-  const { error } = await client.from(table).upsert(entry.payload, { onConflict: "id" });
+
+  let payload = entry.payload;
+  if (table === "members") {
+    payload = sanitizeMember(payload);
+  }
+
+  const { error } = await client.from(table).upsert(payload, { onConflict: "id" });
   if (error) throw error;
 }
 
