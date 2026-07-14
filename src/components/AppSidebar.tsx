@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, Skull, Coins, Landmark, BarChart3,
-  CreditCard, Settings, Shield, RefreshCw
+  CreditCard, ScanLine, Settings, Shield, RefreshCw
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import logo from "@/assets/logo-aschrisk.png";
@@ -14,6 +14,7 @@ import {
 const mainItems = [
   { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
   { title: "Membres", url: "/members", icon: Users },
+  { title: "Scanner QR", url: "/scanner", icon: ScanLine },
 ];
 
 const managementItems = [
@@ -50,7 +51,7 @@ function SidebarSection({ label, items }: { label: string; items: typeof mainIte
               <SidebarMenuButton asChild>
                 <NavLink
                   to={item.url}
-                  end
+                  end={item.url === "/" || item.url === "/dashboard"}
                   onClick={handleClick}
                   className="hover:bg-sidebar-accent transition-colors"
                   activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"

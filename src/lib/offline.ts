@@ -67,9 +67,9 @@ export function getQueueStats() {
 function sanitizeMember(member: DbMember) {
   return {
     ...member,
-    secondary_members: member.secondary_members || [],
-    guardian: member.guardian || {},
-    total_covered_persons: 1 + (member.secondary_members || []).length,
+    secondary_members: (member.secondary_members || []).map(m => ({ ...m, id: m.id || crypto.randomUUID?.() || Math.random().toString(36).slice(2) })),
+    guardian: { ...(member.guardian || {}), id: member.guardian?.id || crypto.randomUUID?.() || Math.random().toString(36).slice(2) },
+    total_covered_persons: 1 + ((member.secondary_members || []).map(m => ({ ...m, id: m.id || crypto.randomUUID?.() || Math.random().toString(36).slice(2) }))).length,
   };
 }
 
