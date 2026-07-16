@@ -53,11 +53,12 @@ function SidebarSection({ label, items }: { label: string; items: typeof mainIte
                   to={item.url}
                   end={item.url === "/" || item.url === "/dashboard"}
                   onClick={handleClick}
-                  className="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-sidebar-accent transition-colors"
+                  className="flex min-h-10 w-full items-center gap-3 rounded-md px-3 py-2 text-sm leading-none transition-colors hover:bg-sidebar-accent"
                   activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"
+                  title={collapsed ? item.title : undefined}
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
-                  {!collapsed && <span>{item.title}</span>}
+                  {!collapsed && <span className="min-w-0 flex-1 truncate whitespace-nowrap leading-none">{item.title}</span>}
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -72,7 +73,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { settings } = useSettings();
-  const shortName = settings?.initials ? `AS.${settings.initials}.K` : "AS.CHRIS.K";
+  const shortName = "AS.CHRIS.K";
 
   return (
     <Sidebar collapsible="icon">
@@ -100,8 +101,8 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-4">
         {!collapsed && (
-          <p className="text-[10px] text-sidebar-foreground/40 text-center">
-            v2.0 — Kouassikandro
+          <p className="text-center text-[10px] text-sidebar-foreground/40">
+            v2.0 — Kouassikankro
           </p>
         )}
       </SidebarFooter>
