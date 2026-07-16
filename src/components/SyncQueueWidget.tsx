@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { CloudUpload, RefreshCw, ScrollText, Trash2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getQueueStats, getSyncLog, clearSyncLog, onSyncEvent, type SyncLogEntry } from "@/lib/offline";
+import { getLastSuccessfulSync, getLastSyncAttempt, getQueueStats, getSyncLog, clearSyncLog, onSyncEvent, type SyncLogEntry } from "@/lib/offline";
 import { useOnlineStatus } from "@/lib/online";
 import { toast } from "sonner";
 
@@ -10,11 +10,14 @@ export function SyncQueueWidget() {
   const { online, syncing, syncNow } = useOnlineStatus();
   const [stats, setStats] = useState(getQueueStats());
   const [log, setLog] = useState<SyncLogEntry[]>(getSyncLog());
+  const [lastSync, setLastSync] = useState(getLastSuccessfulSync());
+  const [lastAttempt, setLastAttempt] = useState(getLastSyncAttempt());
   const [showLog, setShowLog] = useState(false);
 
   useEffect(() => {
-    const id = setInterval(() => setStats(getQueueStats()), 2000);
-    const off = onSyncEvent(() => { setStats(getQueueStats()); setLog(getSyncLog()); });
+    const refresh = () => { setStats(getQueueStats()); setLog(getSyncLog()); setLastSync(getLastSuccessfulSync()); setLastAttempt(getLastSyncAttempt()); };
+    const id = setInterval(refresh, 2000);
+    const off = onSyncEvent(refresh);
     return () => { clearInterval(id); off(); };
   }, []);
 
@@ -44,6 +47,16 @@ export function SyncQueueWidget() {
           <Stat label="Avec retries" value={stats.withRetries} />
           <Stat label="Plus ancien" value={stats.oldest ? new Date(stats.oldest).toLocaleTimeString() : "—"} />
         </div>
+        <div className="grid gap-2 text-xs md:grid-cols-2">
+          <div className="rounded border border-border/50 p-2">
+            <span className="text-muted-foreground">Dernière sync réussie</span>
+            <div className="font-semibold">{lastSync ? new Date(lastSync).toLocaleString("fr-FR") : "Jamais sur cet appareil"}</div>
+          </div>
+          <div className="rounded border border-border/50 p-2">
+            <span className="text-muted-foreground">Dernière tentative</span>
+            <div className="font-semibold">{lastAttempt ? new Date(lastAttempt).toLocaleString("fr-FR") : "Aucune"}</div>
+          </div>
+        </div>
         {stats.total > 0 && (
           <>
             <div>
@@ -51,6 +64,7 @@ export function SyncQueueWidget() {
               <div className="flex gap-2 text-xs">
                 <span className="px-2 py-1 rounded bg-success/10 text-success">Insert: {stats.byOp.insert}</span>
                 <span className="px-2 py-1 rounded bg-warning/10 text-warning">Update: {stats.byOp.update}</span>
+                <span className="px-2 py-1 rounded bg-secondary">Batch: {stats.byOp.batch}</span>
                 <span className="px-2 py-1 rounded bg-destructive/10 text-destructive">Delete: {stats.byOp.delete}</span>
               </div>
             </div>
@@ -81,14 +95,19 @@ export function SyncQueueWidget() {
             <div className="max-h-64 overflow-auto space-y-1">
               {log.length === 0 && <p className="text-xs text-muted-foreground">Aucune opération enregistrée.</p>}
               {log.map((e) => (
-                <div key={e.id + e.ts} className="flex items-center gap-2 text-xs p-1.5 rounded bg-secondary/40">
+                <div key={e.id + e.ts} className="grid gap-1 rounded bg-secondary/40 p-2 text-xs">
+                  <div className="flex min-w-0 items-center gap-2">
+                  {e.status === "pending" && <RefreshCw className="h-3 w-3 text-muted-foreground shrink-0" />}
                   {e.status === "success" && <CheckCircle2 className="h-3 w-3 text-success shrink-0" />}
                   {e.status === "failed" && <AlertTriangle className="h-3 w-3 text-warning shrink-0" />}
                   {e.status === "dropped" && <XCircle className="h-3 w-3 text-destructive shrink-0" />}
                   <span className="font-mono shrink-0">{new Date(e.ts).toLocaleTimeString()}</span>
                   <span className="font-semibold">{e.op}</span>
                   <span className="text-muted-foreground">{e.table}</span>
-                  {e.error && <span className="text-destructive truncate ml-auto" title={e.error}>{e.error.slice(0, 40)}</span>}
+                  {typeof e.attempts === "number" && e.attempts > 0 && <span className="ml-auto rounded bg-warning/10 px-1.5 py-0.5 text-warning">retry {e.attempts}</span>}
+                  </div>
+                  {e.details && <div className="truncate text-muted-foreground" title={e.details}>{e.details}</div>}
+                  {e.error && <div className="break-words text-destructive" title={e.error}>{e.error}</div>}
                 </div>
               ))}
             </div>

@@ -3,6 +3,8 @@ import type { AppUser } from "@/db/database";
 import { supabase } from "@/integrations/supabase/client";
 import { authenticateOffline, cacheOfflineUser } from "@/lib/offline";
 
+const db = supabase as any;
+
 type AuthContextValue = {
   user: AppUser | null;
   isAuthenticated: boolean;
@@ -36,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const { data, error } = await supabase.rpc("authenticate_app_user", { p_username: cleanUsername, p_password: password });
+      const { data, error } = await db.rpc("authenticate_app_user", { p_username: cleanUsername, p_password: password });
       if (error) throw error;
       const found = Array.isArray(data) ? data[0] : data;
       if (!found) return { ok: false, error: "Identifiant ou mot de passe incorrect" };

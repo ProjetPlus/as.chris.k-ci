@@ -3,7 +3,7 @@ import { Activity, Wifi, WifiOff, AlertTriangle, CheckCircle2, RefreshCw } from 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getRealtimeDiagnostics, onDiagChange, type ChannelDiag } from "@/lib/realtime";
-import { getQueue, isOnline } from "@/lib/offline";
+import { getLastSuccessfulSync, getQueue, getSyncLog, isOnline } from "@/lib/offline";
 
 function timeAgo(ts?: number) {
   if (!ts) return "—";
@@ -24,15 +24,29 @@ const STATUS_BADGE: Record<ChannelDiag["status"], { color: string; icon: any; la
 export function RealtimeDiagnostics() {
   const [diag, setDiag] = useState<ChannelDiag[]>(getRealtimeDiagnostics());
   const [tick, setTick] = useState(0);
+  const [swStatus, setSwStatus] = useState("Non disponible");
 
   useEffect(() => {
     const unsub = onDiagChange(() => setDiag(getRealtimeDiagnostics()));
-    const interval = setInterval(() => { setDiag(getRealtimeDiagnostics()); setTick((t) => t + 1); }, 2000);
+    const refreshSw = async () => {
+      if (!("serviceWorker" in navigator)) { setSwStatus("Non supporté"); return; }
+      const regs = await navigator.serviceWorker.getRegistrations().catch(() => []);
+      const app = regs.find((r) => r.active?.scriptURL.endsWith("/sw.js") || r.waiting?.scriptURL.endsWith("/sw.js") || r.installing?.scriptURL.endsWith("/sw.js"));
+      if (!app) { setSwStatus(navigator.serviceWorker.controller ? "Contrôleur actif" : "Aucun worker app"); return; }
+      if (app.waiting) setSwStatus("Mise à jour prête");
+      else if (app.installing) setSwStatus("Installation");
+      else if (app.active) setSwStatus("Actif");
+      else setSwStatus("En attente");
+    };
+    refreshSw();
+    const interval = setInterval(() => { setDiag(getRealtimeDiagnostics()); setTick((t) => t + 1); refreshSw(); }, 2000);
     return () => { unsub(); clearInterval(interval); };
   }, []);
 
   const queueSize = getQueue().length;
   const online = isOnline();
+  const lastSync = getLastSuccessfulSync();
+  const syncErrors = getSyncLog().filter((e) => e.status === "failed" && /ayant|tutel|member|membre|guardian|secondary/i.test(`${e.details || ""} ${e.error || ""}`)).slice(0, 3);
 
   return (
     <Card>
@@ -55,6 +69,26 @@ export function RealtimeDiagnostics() {
             </div>
           </div>
         </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-lg border bg-card p-3 text-xs">
+            <div className="font-semibold">Service Worker</div>
+            <div className="mt-1 text-muted-foreground">{swStatus}</div>
+          </div>
+          <div className="rounded-lg border bg-card p-3 text-xs">
+            <div className="font-semibold">Dernière sync fiable</div>
+            <div className="mt-1 text-muted-foreground">{lastSync ? new Date(lastSync).toLocaleString("fr-FR") : "Aucune réussite enregistrée"}</div>
+          </div>
+        </div>
+
+        {syncErrors.length > 0 && (
+          <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs">
+            <div className="mb-2 flex items-center gap-2 font-semibold text-warning"><AlertTriangle className="h-4 w-4" /> Erreurs ayants droit / tutel</div>
+            <div className="space-y-1">
+              {syncErrors.map((e) => <div key={e.id + e.ts} className="break-words text-muted-foreground">{e.details} {e.error ? `— ${e.error}` : ""}</div>)}
+            </div>
+          </div>
+        )}
 
         {diag.length === 0 ? (
           <p className="text-xs text-muted-foreground italic">Aucun canal realtime actif. Naviguez dans l'application pour activer les abonnements.</p>
@@ -90,7 +124,7 @@ export function RealtimeDiagnostics() {
         )}
 
         <div className="text-[10px] text-muted-foreground">
-          Mis à jour {tick > 0 ? "automatiquement" : "à l'instant"} • Ouvrez la console pour voir les logs <code>[realtime]</code>.
+          Mis à jour {tick > 0 ? "automatiquement" : "à l'instant"} • Les logs détaillés sont visibles dans la file de synchronisation.
         </div>
 
         <Button variant="outline" size="sm" onClick={() => setDiag(getRealtimeDiagnostics())} className="w-full">

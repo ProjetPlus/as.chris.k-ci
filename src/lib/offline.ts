@@ -12,13 +12,25 @@ export type QueueEntry = {
   status?: "success" | "failed" | "pending";
   lastError?: string;
 };
-export type SyncLogEntry = { id: string; ts: number; op: QueueOp; table: string; status: "success" | "failed" | "dropped"; error?: string };
+export type SyncLogEntry = {
+  id: string;
+  ts: number;
+  op: QueueOp;
+  table: string;
+  status: "pending" | "success" | "failed" | "dropped";
+  error?: string;
+  details?: string;
+  attempts?: number;
+  payloadSummary?: Record<string, unknown>;
+};
 export type SyncEvent = { type: "item"; entry: QueueEntry; flushed: number } | { type: "done"; flushed: number; failed: number; remaining: number };
 
 const QUEUE_KEY = "aschrisk.sync.queue.v3";
 const LOG_KEY = "aschrisk.sync.log.v1";
+const LAST_SYNC_KEY = "aschrisk.sync.last_success.v1";
+const LAST_SYNC_ATTEMPT_KEY = "aschrisk.sync.last_attempt.v1";
 const AUTH_KEY = "aschrisk.offline.auth.v2";
-const MAX_LOG = 80;
+const MAX_LOG = 250;
 const listeners = new Set<(e: SyncEvent) => void>();
 let syncing = false;
 
@@ -33,15 +45,102 @@ export function getQueue(): QueueEntry[] { return read<QueueEntry[]>(QUEUE_KEY, 
 export function setQueue(q: QueueEntry[]) { write(QUEUE_KEY, q); window.dispatchEvent(new Event("aschrisk:queue")); }
 export function getSyncLog(): SyncLogEntry[] { return read<SyncLogEntry[]>(LOG_KEY, []); }
 export function clearSyncLog() { write(LOG_KEY, []); }
+export function getLastSuccessfulSync() { return read<number | null>(LAST_SYNC_KEY, null); }
+export function getLastSyncAttempt() { return read<number | null>(LAST_SYNC_ATTEMPT_KEY, null); }
 export function onSyncEvent(cb: (e: SyncEvent) => void) { listeners.add(cb); return () => listeners.delete(cb); }
 const emit = (e: SyncEvent) => listeners.forEach((cb) => cb(e));
-const log = (entry: QueueEntry, status: SyncLogEntry["status"], error?: string) => write(LOG_KEY, [{ id: entry.id, ts: Date.now(), op: entry.op, table: entry.table, status, error }, ...getSyncLog()].slice(0, MAX_LOG));
+
+function summarizePayload(payload: any): Record<string, unknown> {
+  const member = payload?.member || payload?.updatedDeceased || payload;
+  if (payload?.death && payload?.contributions) {
+    return {
+      death_id: payload.death.id,
+      deceased_member_id: payload.death.deceased_member_id,
+      successor_member_id: payload.successor?.member_id || payload.successor?.id || "aucun",
+      ayants_droit: payload.successor?.secondary_members?.length ?? payload.updatedDeceased?.secondary_members?.length ?? 0,
+      cotisations: payload.contributions.length,
+    };
+  }
+  if (member && typeof member === "object") {
+    const secondary = Array.isArray(member.secondary_members) ? member.secondary_members : [];
+    return {
+      id: member.id,
+      member_id: member.member_id,
+      nom: [member.last_name, member.first_name].filter(Boolean).join(" ") || member.member_name,
+      ayants_droit: secondary.length,
+      tutel: [member.guardian?.last_name, member.guardian?.first_name].filter(Boolean).join(" ") || (member.guardian?.phone ? "tutel avec téléphone" : "aucun"),
+      montant_adhesion: member.adhesion_amount,
+      statut: member.status,
+    };
+  }
+  return { valeur: typeof payload };
+}
+
+function describePayload(entry: QueueEntry) {
+  const s = summarizePayload(entry.payload);
+  if (entry.table === "death_promotion") return `Décès ${s.deceased_member_id || "—"} · successeur ${s.successor_member_id || "—"} · ayants droit ${s.ayants_droit} · cotisations ${s.cotisations}`;
+  if (entry.table === "member_bundle" || entry.table === "members") return `Membre ${s.member_id || s.id || "—"} · ayants droit ${s.ayants_droit} · tutel ${s.tutel}`;
+  if (entry.table === "contributions") return `Cotisation ${s.id || "—"} · ${s.member_id || "—"}`;
+  if (entry.table === "deaths") return `Décès ${s.id || "—"}`;
+  return `${entry.table} ${s.id || ""}`.trim();
+}
+
+const log = (entry: QueueEntry, status: SyncLogEntry["status"], error?: string) => {
+  const row: SyncLogEntry = {
+    id: entry.id,
+    ts: Date.now(),
+    op: entry.op,
+    table: entry.table,
+    status,
+    error,
+    details: describePayload(entry),
+    attempts: entry.attempts,
+    payloadSummary: summarizePayload(entry.payload),
+  };
+  write(LOG_KEY, [row, ...getSyncLog()].slice(0, MAX_LOG));
+  return row;
+};
+
+async function writeBaseAudit(client: SupabaseClient, entry: QueueEntry, status: SyncLogEntry["status"], error?: string) {
+  if (!isOnline()) return;
+  try {
+    await client.from("sync_audit_logs").insert({
+      queue_id: entry.id,
+      operation: entry.op,
+      target_table: entry.table,
+      status,
+      attempts: entry.attempts,
+      details: describePayload(entry),
+      error_message: error || null,
+      payload_summary: summarizePayload(entry.payload),
+      created_at: new Date().toISOString(),
+    });
+  } catch {
+    // Audit base is diagnostic only: never block rural offline sync because logging failed.
+  }
+}
+
+function normalizePayloadForQueue(table: QueueEntry["table"], payload: any) {
+  if (table === "members") return sanitizeMember(payload);
+  if (table === "member_bundle") return { ...payload, member: sanitizeMember(payload.member) };
+  if (table === "death_promotion") {
+    return {
+      ...payload,
+      updatedDeceased: sanitizeMember(payload.updatedDeceased),
+      successor: payload.successor ? sanitizeMember(payload.successor) : payload.successor,
+      contributions: Array.isArray(payload.contributions) ? payload.contributions : [],
+    };
+  }
+  return payload;
+}
 
 export function enqueue(entry: Omit<QueueEntry, "id" | "createdAt" | "attempts"> & Partial<Pick<QueueEntry, "id" | "attempts">>) {
   const q = getQueue();
-  const item: QueueEntry = { id: entry.id || id(), createdAt: Date.now(), attempts: entry.attempts || 0, op: entry.op, table: entry.table, payload: entry.payload };
+  const item: QueueEntry = { id: entry.id || id(), createdAt: Date.now(), attempts: entry.attempts || 0, op: entry.op, table: entry.table, payload: normalizePayloadForQueue(entry.table, entry.payload), status: "pending" };
   q.push(item);
   setQueue(q);
+  log(item, "pending");
+  console.info("[sync] opération mise en file", item.table, describePayload(item));
   return item;
 }
 
@@ -59,7 +158,7 @@ export function getQueueStats() {
     total: q.length,
     withRetries: q.filter((e) => e.attempts > 0).length,
     oldest: q[0]?.createdAt,
-    byOp: { insert: q.filter((e) => e.op === "insert").length, update: q.filter((e) => e.op === "update").length, delete: q.filter((e) => e.op === "delete").length },
+    byOp: { insert: q.filter((e) => e.op === "insert").length, update: q.filter((e) => e.op === "update").length, delete: q.filter((e) => e.op === "delete").length, batch: q.filter((e) => e.op === "batch").length },
     byTable: q.reduce<Record<string, number>>((acc, e) => { acc[e.table] = (acc[e.table] || 0) + 1; return acc; }, {}),
   };
 }
@@ -125,30 +224,41 @@ export async function flushQueue(client: SupabaseClient, opts: { force?: boolean
   let flushed = 0;
   let failed = 0;
   const remaining: QueueEntry[] = [];
-  for (const entry of getQueue()) {
-    try {
-      await flushEntry(client, entry);
-      flushed += 1;
-      log(entry, "success");
-      emit({ type: "item", entry: { ...entry, lastError: undefined }, flushed });
-    } catch (err: any) {
-      failed += 1;
-      const next = { ...entry, attempts: entry.attempts + 1, lastError: err?.message || String(err) };
-      remaining.push(next);
-      log(next, "failed", next.lastError);
-      console.warn(`[sync] item failed (retry ${next.attempts}/∞)`, next.table, next.lastError);
+  write(LAST_SYNC_ATTEMPT_KEY, Date.now());
+  try {
+    for (const entry of getQueue()) {
+      const normalized = { ...entry, payload: normalizePayloadForQueue(entry.table, entry.payload) };
+      try {
+        await flushEntry(client, normalized);
+        flushed += 1;
+        const done: QueueEntry = { ...normalized, status: "success", lastError: undefined };
+        log(done, "success");
+        await writeBaseAudit(client, done, "success");
+        emit({ type: "item", entry: done, flushed });
+      } catch (err: any) {
+        failed += 1;
+        const next: QueueEntry = { ...normalized, attempts: normalized.attempts + 1, lastError: err?.message || String(err), status: "failed" };
+        remaining.push(next);
+        log(next, "failed", next.lastError);
+        await writeBaseAudit(client, next, "failed", next.lastError);
+        emit({ type: "item", entry: next, flushed });
+        console.warn(`[sync] échec item (retry ${next.attempts}/∞)`, next.table, describePayload(next), next.lastError);
+      }
     }
+    setQueue(remaining);
+    if (flushed > 0 && failed === 0) write(LAST_SYNC_KEY, Date.now());
+    return { flushed, failed, remaining: remaining.length };
+  } finally {
+    syncing = false;
+    emit({ type: "done", flushed, failed, remaining: remaining.length });
   }
-  setQueue(remaining);
-  syncing = false;
-  emit({ type: "done", flushed, failed, remaining: remaining.length });
-  return { flushed, failed, remaining: remaining.length };
 }
 
 export function startAutoSync(client: SupabaseClient, intervalMs = 15000) {
   const run = () => { if (isOnline()) flushQueue(client, { force: true }).catch(() => {}); };
   window.addEventListener("online", () => { console.info("[sync] network online -> flushing queue"); run(); });
   window.addEventListener("visibilitychange", () => { if (!document.hidden) run(); });
+  window.addEventListener("focus", run);
   window.addEventListener("pageshow", run);
   setInterval(run, intervalMs);
   run();
