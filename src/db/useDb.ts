@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { enqueue, enqueueDeathPromotion, enqueueMemberBundle, flushQueue } from "@/lib/offline";
 import { DEFAULT_SETTINGS, buildDeathPromotionBundle, fullName, makeMember, nowIso, uuid } from "@/lib/memberWorkflow";
 
+const db = supabase as any;
+
 const SNAPSHOT_KEY = "aschrisk.db.snapshot.v5";
 const CREATE_MEMBER_EVENT = "aschrisk:create-member";
 
@@ -53,7 +55,7 @@ function recalcTreasury(snap: Snapshot): DbTreasury {
 
 async function safeFetch<T>(table: TableName, fallback: T[]): Promise<T[]> {
   if (!navigator.onLine) return fallback;
-  const { data, error } = await supabase.from(table).select("*");
+  const { data, error } = await db.from(table).select("*");
   return error || !data ? fallback : data as T[];
 }
 
@@ -90,11 +92,11 @@ async function persist(table: TableName, payload: any, op: "insert" | "update" |
     return;
   }
   if (op === "delete") {
-    const { error } = await supabase.from(table).delete().eq("id", payload.id);
+    const { error } = await db.from(table).delete().eq("id", payload.id);
     if (error) enqueue({ op: "delete", table, payload });
     return;
   }
-  const { error } = await supabase.from(table).upsert(payload, { onConflict: "id" });
+  const { error } = await db.from(table).upsert(payload, { onConflict: "id" });
   if (error) enqueue({ op: "update", table, payload });
 }
 
