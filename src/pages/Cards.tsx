@@ -6,6 +6,7 @@ import { useMembers, useSettings } from "@/db/useDb";
 import { PageTitle, fmtDate } from "@/pages/pageUtils";
 import { fullName } from "@/lib/memberWorkflow";
 import { useEffect, useState } from "react";
+import logo from "@/assets/logo-aschrisk.png";
 
 const bordeaux = "#C4654A";
 const accent = "#B85A38";
@@ -17,6 +18,18 @@ const cardH = 53.98;
 const clean = (value?: string | number | null) => String(value ?? "").replace(/\//g, " ");
 const memberPayload = (member: any) => JSON.stringify({ member_id: clean(member.member_id), name: clean(fullName(member)) });
 
+async function loadImage(src: string) {
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.src = src;
+  await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject; });
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  canvas.getContext("2d")?.drawImage(img, 0, 0);
+  return canvas.toDataURL("image/png");
+}
+
 export default function Cards() {
   const { members } = useMembers();
   const { settings } = useSettings();
@@ -27,6 +40,7 @@ export default function Cards() {
     if (!member) return;
     const doc = new jsPDF({ unit: "mm", format: [cardW, cardH], orientation: "landscape" });
     const qr = await QRCode.toDataURL(memberPayload(member), { margin: 0, width: 256 });
+    const logoData = await loadImage(logo).catch(() => "");
     
     const assocName = clean(settings.association_name).toUpperCase();
 
@@ -34,8 +48,9 @@ export default function Cards() {
     doc.setFillColor(creme); doc.rect(0, 0, cardW, cardH, "F");
     doc.setFillColor(bordeaux); doc.rect(0, 0, cardW, 13.5, "F");
     doc.setFillColor(accent); doc.rect(0, 13.5, cardW, 1.5, "F");
+    if (logoData) doc.addImage(logoData, "PNG", 3.8, 1.4, 10.6, 10.6);
     doc.setTextColor("#FFFFFF"); doc.setFont("helvetica", "bold"); doc.setFontSize(7.6); 
-    doc.text(assocName, cardW / 2, 6.2, { align: "center", maxWidth: 76 });
+    doc.text(assocName, 49, 6.2, { align: "center", maxWidth: 65 });
     doc.setFontSize(5.5); doc.text("CARTE DE MEMBRE", cardW / 2, 10.2, { align: "center" });
     
     // Photo Placeholder
@@ -62,8 +77,9 @@ export default function Cards() {
     doc.addPage([cardW, cardH], "landscape");
     doc.setFillColor(creme); doc.rect(0, 0, cardW, cardH, "F");
     doc.setFillColor(bordeaux); doc.rect(0, 0, cardW, 11, "F"); 
+    if (logoData) doc.addImage(logoData, "PNG", 3.8, 1.1, 9.2, 9.2);
     doc.setTextColor("#FFFFFF"); doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); 
-    doc.text(assocName, cardW / 2, 6.8, { align: "center", maxWidth: 78 });
+    doc.text(assocName, 49, 6.8, { align: "center", maxWidth: 65 });
     
     doc.setTextColor(anthracite); doc.setFont("helvetica", "normal"); doc.setFontSize(6.2); 
     doc.text("Cette carte identifie un membre actif de l'association. Toute vérification se fait par QR code et registre officiel.", cardW / 2, 18, { align: "center", maxWidth: 70 });
@@ -91,7 +107,7 @@ export default function Cards() {
                 ))}
               </Select>
             </div>
-            <Button onClick={generate} className="bg-bordeaux hover:bg-bordeaux-dark text-white">Télécharger PDF (Recto/Verso)</Button>
+            <Button onClick={generate} className="bg-bordeaux hover:bg-bordeaux-dark text-primary-foreground">Télécharger PDF (Recto/Verso)</Button>
           </div>
           <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2">
             <CardPreview side="Recto (Face A)" member={member} settings={settings} />
@@ -118,9 +134,12 @@ function CardPreview({ member, side, back, settings }: { member: any; side: stri
   return (
     <div className="mx-auto aspect-[85.6/53.98] w-full max-w-[430px] overflow-hidden rounded-xl border shadow-elegant" style={{ background: creme }}>
       <div className="relative h-full overflow-hidden">
-        <div className="flex h-[25%] flex-col items-center justify-center px-6 text-center font-bold leading-tight text-white" style={{ background: bordeaux }}>
-          <span className="text-[11px] uppercase tracking-wide">{clean(assocName)}</span>
+        <div className="flex h-[25%] items-center justify-center gap-3 px-4 text-center font-bold leading-tight text-primary-foreground" style={{ background: bordeaux }}>
+          <img src={logo} alt="AS.CHRIS.K" className="h-10 w-10 shrink-0 object-contain" />
+          <div className="min-w-0">
+          <span className="block text-[11px] uppercase tracking-wide">{clean(assocName)}</span>
           {!back && <span className="mt-1 text-[8px] uppercase opacity-90">Carte de membre</span>}
+          </div>
         </div>
         {!back && <div className="h-1" style={{ background: accent }} />}
         
@@ -152,7 +171,7 @@ function CardPreview({ member, side, back, settings }: { member: any; side: stri
           </div>
         )}
         
-        <div className="absolute bottom-0 left-0 right-0 flex h-6 items-center justify-center text-[10px] font-bold uppercase tracking-widest text-white" style={{ background: back ? accent : bordeaux }}>
+        <div className="absolute bottom-0 left-0 right-0 flex h-6 items-center justify-center text-[10px] font-bold uppercase tracking-widest text-primary-foreground" style={{ background: back ? accent : bordeaux }}>
           {clean(side)}
         </div>
       </div>
