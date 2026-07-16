@@ -61,7 +61,7 @@ self.addEventListener("fetch", (event) => {
           return res;
         })
         .catch(() => cachedShell().then((r) => r || new Response(
-          "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>AS.CHRIS.K hors ligne</title><body style='font-family:sans-serif;padding:24px;background:#f7efe6;color:#2b1118'><h1>AS.CHRIS.K</h1><p>Application hors ligne. Le cœur de l’application n’est pas encore présent sur cet appareil.</p></body>",
+          "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>AS.CHRIS.K hors ligne</title><body style='font-family:sans-serif;padding:24px;background:#FAF5EE;color:#1F1F1F'><h1>AS.CHRIS.K</h1><p>Application hors ligne. Le cœur de l’application n’est pas encore présent sur cet appareil.</p></body>",
           { headers: { "Content-Type": "text/html; charset=utf-8" } }
         )))
     );

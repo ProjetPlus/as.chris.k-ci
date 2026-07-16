@@ -53,10 +53,10 @@ function SidebarSection({ label, items }: { label: string; items: typeof mainIte
                   to={item.url}
                   end={item.url === "/" || item.url === "/dashboard"}
                   onClick={handleClick}
-                  className="hover:bg-sidebar-accent transition-colors"
+                  className="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-sidebar-accent transition-colors"
                   activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"
                 >
-                  <item.icon className="mr-2 h-4 w-4 shrink-0" />
+                  <item.icon className="h-4 w-4 shrink-0" />
                   {!collapsed && <span>{item.title}</span>}
                 </NavLink>
               </SidebarMenuButton>
