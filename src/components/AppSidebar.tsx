@@ -53,11 +53,12 @@ function SidebarSection({ label, items }: { label: string; items: typeof mainIte
                   to={item.url}
                   end={item.url === "/" || item.url === "/dashboard"}
                   onClick={handleClick}
-                  className="flex min-h-10 w-full items-center gap-3 rounded-md px-3 py-2 text-sm leading-none transition-colors hover:bg-sidebar-accent"
+                  className="flex flex-row flex-nowrap w-full items-center gap-3 rounded-md px-3 py-2 text-sm leading-none transition-colors hover:bg-sidebar-accent [&>*]:inline-flex"
                   activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"
                   title={collapsed ? item.title : undefined}
+                  style={{ display: "flex", flexDirection: "row", alignItems: "center" }}
                 >
-                  <item.icon className="h-4 w-4 shrink-0" />
+                  <item.icon className="h-4 w-4 shrink-0" style={{ flexShrink: 0 }} />
                   {!collapsed && <span className="min-w-0 flex-1 truncate whitespace-nowrap leading-none">{item.title}</span>}
                 </NavLink>
               </SidebarMenuButton>
