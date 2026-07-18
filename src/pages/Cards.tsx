@@ -1,34 +1,12 @@
+import { useRef, useState } from "react";
+import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
 import { Select, SelectItem } from "@/components/ui/select";
 import { useMembers, useSettings } from "@/db/useDb";
-import { PageTitle, fmtDate } from "@/pages/pageUtils";
+import { PageTitle } from "@/pages/pageUtils";
 import { fullName } from "@/lib/memberWorkflow";
-import { useEffect, useState } from "react";
-import logo from "@/assets/logo-aschrisk.png";
-
-const bordeaux = "#C4654A";
-const accent = "#B85A38";
-const creme = "#FAF5EE";
-const anthracite = "#1F1F1F";
-
-const cardW = 85.6;
-const cardH = 53.98;
-const clean = (value?: string | number | null) => String(value ?? "").replace(/\//g, " ");
-const memberPayload = (member: any) => JSON.stringify({ member_id: clean(member.member_id), name: clean(fullName(member)) });
-
-async function loadImage(src: string) {
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.src = src;
-  await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject; });
-  const canvas = document.createElement("canvas");
-  canvas.width = img.naturalWidth;
-  canvas.height = img.naturalHeight;
-  canvas.getContext("2d")?.drawImage(img, 0, 0);
-  return canvas.toDataURL("image/png");
-}
+import { MemberCard, CARD_W_MM, CARD_H_MM, CARD_W_PX, CARD_H_PX } from "@/components/MemberCard";
 
 export default function Cards() {
   const { members } = useMembers();
@@ -36,67 +14,32 @@ export default function Cards() {
   const [id, setId] = useState(members[0]?.id || "");
   const member = members.find((m) => m.id === id) || members[0];
 
+  const frontRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLDivElement>(null);
+  const [busy, setBusy] = useState(false);
+
   const generate = async () => {
-    if (!member) return;
-    const doc = new jsPDF({ unit: "mm", format: [cardW, cardH], orientation: "landscape" });
-    const qr = await QRCode.toDataURL(memberPayload(member), { margin: 0, width: 256 });
-    const logoData = await loadImage(logo).catch(() => "");
-    
-    const assocName = clean(settings.association_name).toUpperCase();
-
-    // Side A (Recto)
-    doc.setFillColor(creme); doc.rect(0, 0, cardW, cardH, "F");
-    doc.setFillColor(bordeaux); doc.rect(0, 0, cardW, 13.5, "F");
-    doc.setFillColor(accent); doc.rect(0, 13.5, cardW, 1.5, "F");
-    if (logoData) doc.addImage(logoData, "PNG", 3.8, 1.4, 10.6, 10.6);
-    doc.setTextColor("#FFFFFF"); doc.setFont("helvetica", "bold"); doc.setFontSize(7.6); 
-    doc.text(assocName, 49, 6.2, { align: "center", maxWidth: 65 });
-    doc.setFontSize(5.5); doc.text("CARTE DE MEMBRE", cardW / 2, 10.2, { align: "center" });
-    
-    // Photo Placeholder
-    doc.setDrawColor(accent); doc.setLineWidth(0.35); doc.setFillColor("#FFFFFF"); doc.roundedRect(6, 18, 22, 26, 1.5, 1.5, "FD"); 
-    doc.setTextColor(bordeaux); doc.setFontSize(6.5); doc.text("PHOTO", 17, 32, { align: "center" });
-    
-    // Member Info (Centered now that QR is gone)
-    doc.setTextColor(bordeaux); doc.setFont("helvetica", "bold"); doc.setFontSize(11.5); 
-    doc.text(clean(fullName(member).toUpperCase()), 31, 22.4, { maxWidth: 50 });
-    doc.setTextColor(accent); doc.setFontSize(7.8); doc.text(clean(member.member_id), 31, 30.8, { maxWidth: 50 });
-    doc.setTextColor(anthracite); doc.setFont("helvetica", "normal"); doc.setFontSize(6.4); 
-    doc.text([
-      `Tél ${clean(member.phone)}`,
-      `Campement ${clean(member.campement)}`,
-      `Tutel ${clean(fullName(member.guardian))}`,
-      `Couverts ${clean(member.total_covered_persons)} · Adhésion ${clean(member.adhesion_amount)} F`
-    ], 31, 36, { maxWidth: 50, lineHeightFactor: 1.18 });
-    
-    // Footer Side A
-    doc.setFillColor(bordeaux); doc.rect(0, 48, cardW, 5.98, "F"); 
-    doc.setTextColor("#FFFFFF"); doc.setFont("helvetica", "bold"); doc.setFontSize(5.8); doc.text("CARTE OFFICIELLE AS.CHRIS.K", cardW / 2, 52, { align: "center" });
-
-    // Side B (Verso)
-    doc.addPage([cardW, cardH], "landscape");
-    doc.setFillColor(creme); doc.rect(0, 0, cardW, cardH, "F");
-    doc.setFillColor(bordeaux); doc.rect(0, 0, cardW, 11, "F"); 
-    if (logoData) doc.addImage(logoData, "PNG", 3.8, 1.1, 9.2, 9.2);
-    doc.setTextColor("#FFFFFF"); doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); 
-    doc.text(assocName, 49, 6.8, { align: "center", maxWidth: 65 });
-    
-    doc.setTextColor(anthracite); doc.setFont("helvetica", "normal"); doc.setFontSize(6.2); 
-    doc.text("Cette carte identifie un membre actif de l'association. Toute vérification se fait par QR code et registre officiel.", cardW / 2, 18, { align: "center", maxWidth: 70 });
-    doc.setFillColor("#FFFFFF"); doc.roundedRect(33.8, 21.2, 18, 18, 1, 1, "F");
-    doc.addImage(qr, "PNG", 34.5, 21.9, 16.6, 16.6);
-    doc.setTextColor(bordeaux); doc.setFont("helvetica", "bold"); doc.setFontSize(7.2); doc.text(clean(member.member_id), cardW / 2, 42, { align: "center" });
-    doc.setDrawColor(accent); doc.line(12, 47, 32, 47); doc.line(53.6, 47, 73.6, 47);
-    doc.setTextColor(anthracite); doc.setFont("helvetica", "normal"); doc.setFontSize(4.7); doc.text("Président", 22, 50, { align: "center" }); doc.text("Secrétaire général", 63.6, 50, { align: "center" });
-    
-    doc.setFillColor(accent); doc.rect(0, 52, cardW, 1.98, "F");
-
-    doc.save(`carte_${clean(member.member_id).replace(/\s+/g, "_")}.pdf`);
+    if (!member || !frontRef.current || !backRef.current) return;
+    setBusy(true);
+    try {
+      const opts = { scale: 3, backgroundColor: null, useCORS: true, logging: false, width: CARD_W_PX, height: CARD_H_PX } as const;
+      const [frontCanvas, backCanvas] = await Promise.all([
+        html2canvas(frontRef.current, opts),
+        html2canvas(backRef.current, opts),
+      ]);
+      const doc = new jsPDF({ unit: "mm", format: [CARD_W_MM, CARD_H_MM], orientation: "landscape" });
+      doc.addImage(frontCanvas.toDataURL("image/png"), "PNG", 0, 0, CARD_W_MM, CARD_H_MM);
+      doc.addPage([CARD_W_MM, CARD_H_MM], "landscape");
+      doc.addImage(backCanvas.toDataURL("image/png"), "PNG", 0, 0, CARD_W_MM, CARD_H_MM);
+      doc.save(`carte_${String(member.member_id).replace(/\s+/g, "_")}.pdf`);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <div>
-      <PageTitle title="Cartes Membres" subtitle="Génération de PDF duplex standard CR-80 (Charte AS.CHRIS.K)" />
+      <PageTitle title="Cartes Membres" subtitle="Aperçu et export duplex CR-80 · Charte AS.CHRIS.K" />
       {member ? (
         <>
           <div className="mb-6 flex flex-wrap gap-4">
@@ -107,11 +50,18 @@ export default function Cards() {
                 ))}
               </Select>
             </div>
-            <Button onClick={generate} className="bg-bordeaux hover:bg-bordeaux-dark text-primary-foreground">Télécharger PDF (Recto/Verso)</Button>
+            <Button onClick={generate} disabled={busy} className="bg-bordeaux hover:bg-bordeaux-dark text-primary-foreground">
+              {busy ? "Génération…" : "Télécharger PDF (Recto/Verso)"}
+            </Button>
           </div>
-          <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2">
-            <CardPreview side="Recto (Face A)" member={member} settings={settings} />
-            <CardPreview side="Verso (Face B)" member={member} settings={settings} back />
+
+          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-2">
+            <CardStage label="Recto (Face A)">
+              <MemberCard ref={frontRef} member={member} settings={settings} side="front" />
+            </CardStage>
+            <CardStage label="Verso (Face B)">
+              <MemberCard ref={backRef} member={member} settings={settings} side="back" />
+            </CardStage>
           </div>
         </>
       ) : (
@@ -121,58 +71,16 @@ export default function Cards() {
   );
 }
 
-function CardPreview({ member, side, back, settings }: { member: any; side: string; back?: boolean; settings: any }) {
-  const assocName = (settings.association_name || "ASSOCIATION").toUpperCase();
-  const [qr, setQr] = useState("");
-
-  useEffect(() => {
-    let mounted = true;
-    QRCode.toDataURL(memberPayload(member), { margin: 0, width: 160 }).then((src) => mounted && setQr(src));
-    return () => { mounted = false; };
-  }, [member]);
-
+function CardStage({ label, children }: { label: string; children: React.ReactNode }) {
+  // Scale the fixed-pixel card down responsively for preview while keeping DOM
+  // dimensions intact for html2canvas.
+  const scale = 0.62;
   return (
-    <div className="mx-auto aspect-[85.6/53.98] w-full max-w-[430px] overflow-hidden rounded-xl border shadow-elegant" style={{ background: creme }}>
-      <div className="relative h-full overflow-hidden">
-        <div className="flex h-[25%] items-center justify-center gap-3 px-4 text-center font-bold leading-tight text-primary-foreground" style={{ background: bordeaux }}>
-          <img src={logo} alt="AS.CHRIS.K" className="h-10 w-10 shrink-0 object-contain" />
-          <div className="min-w-0">
-          <span className="block text-[11px] uppercase tracking-wide">{clean(assocName)}</span>
-          {!back && <span className="mt-1 text-[8px] uppercase opacity-90">Carte de membre</span>}
-          </div>
-        </div>
-        {!back && <div className="h-1" style={{ background: accent }} />}
-        
-        {back ? (
-          <div className="flex h-[75%] flex-col items-center justify-center px-10 pb-4 text-center">
-            <p className="max-w-[350px] text-[11px] leading-tight" style={{ color: anthracite }}>Cette carte identifie un membre actif de l'association. Toute vérification se fait par QR code et registre officiel.</p>
-            <div className="mt-3 grid h-20 w-20 place-items-center rounded-sm bg-white p-1 shadow-sm border">
-              {qr ? <img src={qr} alt="QR code membre" className="h-full w-full" /> : <span className="text-[10px] font-bold text-primary">QR</span>}
-            </div>
-            <p className="mt-2 font-mono text-xs font-bold" style={{ color: bordeaux }}>{clean(member.member_id)}</p>
-            <div className="mt-3 flex w-full items-end justify-between px-4 text-[9px]" style={{ color: anthracite }}>
-              <span className="border-t pt-1" style={{ borderColor: accent }}>Président</span>
-              <span className="border-t pt-1" style={{ borderColor: accent }}>Secrétaire général</span>
-            </div>
-          </div>
-        ) : (
-          <div className="grid h-[75%] grid-cols-[100px_1fr] items-center gap-4 px-6 pb-6 pt-3">
-            <div className="grid h-28 place-items-center rounded-md border-2 bg-white text-[10px] font-bold shadow-inner" style={{ borderColor: accent, color: bordeaux }}>PHOTO</div>
-            <div className="min-w-0">
-              <p className="line-clamp-2 text-base font-bold leading-tight" style={{ color: bordeaux }}>{clean(fullName(member).toUpperCase())}</p>
-              <p className="mt-1 truncate font-mono text-sm font-bold" style={{ color: accent }}>{clean(member.member_id)}</p>
-              <div className="mt-2 space-y-0.5 text-[10px] leading-tight" style={{ color: anthracite }}>
-                <p className="truncate">Tél {clean(member.phone)}</p>
-                <p className="truncate">Campement {clean(member.campement)}</p>
-                <p className="truncate">Tutel {clean(fullName(member.guardian))}</p>
-                <p className="truncate">Couverts {clean(member.total_covered_persons)} · Adhésion {clean(member.adhesion_amount)} F</p>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <div className="absolute bottom-0 left-0 right-0 flex h-6 items-center justify-center text-[10px] font-bold uppercase tracking-widest text-primary-foreground" style={{ background: back ? accent : bordeaux }}>
-          {clean(side)}
+    <div className="space-y-3">
+      <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div style={{ width: CARD_W_PX * scale, height: CARD_H_PX * scale, position: "relative" }} className="mx-auto">
+        <div style={{ transform: `scale(${scale})`, transformOrigin: "top left", width: CARD_W_PX, height: CARD_H_PX }}>
+          {children}
         </div>
       </div>
     </div>
