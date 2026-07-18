@@ -1,0 +1,173 @@
+{
+  "version": 1,
+  "sdk_version": "0.23.0",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://fkdyuziqjpybnoirqsci.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "aschrisk-mcp",
+      "version": "0.1.0",
+      "title": "AS.CHRIS.K MCP"
+    },
+    "tools": [
+      {
+        "name": "list_members",
+        "title": "Lister les membres",
+        "description": "Retourne la liste des membres AS.CHRIS.K (nom, prénom, identifiant, campement, téléphone, statut). Filtres optionnels sur statut et campement, recherche par nom.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "search": {
+              "description": "Recherche libre sur nom/prénom/identifiant.",
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "actif",
+                "suspendu",
+                "décédé"
+              ]
+            },
+            "campement": {
+              "type": "string"
+            },
+            "limit": {
+              "description": "Nombre max de résultats (défaut 50).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_member",
+        "title": "Détail d'un membre",
+        "description": "Retourne le dossier complet d'un membre : identité, coordonnées, ayants droit (secondary_members), personne de tutel (guardian), statut de cotisation et adhésion.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "member_id": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Identifiant lisible (ex: A-25-0007) ou UUID interne."
+            }
+          },
+          "required": [
+            "member_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_contributions",
+        "title": "Lister les cotisations",
+        "description": "Retourne les cotisations enregistrées. Filtrable par statut et par décès (death_id) ou membre (member_id).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "payé",
+                "non_payé",
+                "partiel",
+                "exonéré"
+              ]
+            },
+            "death_id": {
+              "type": "string"
+            },
+            "member_id": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_deaths",
+        "title": "Lister les décès",
+        "description": "Retourne les décès enregistrés (principal ou secondaire) avec montant reversé, retenu et statut.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "en_cours",
+                "clôturé"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "principal",
+                "secondaire"
+              ]
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "treasury_summary",
+        "title": "Synthèse trésorerie",
+        "description": "Retourne le solde de la caisse, cotisations collectées, réserves retenues et cotisations en attente.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

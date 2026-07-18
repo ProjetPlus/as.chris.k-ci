@@ -8,7 +8,10 @@ import { AppLayout } from "@/components/AppLayout";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import Login from "./pages/Login";
+import OAuthConsent from "./pages/OAuthConsent";
+import McpLogin from "./pages/McpLogin";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+
 
 // Lazy-loaded routes for 2G/slow networks (code-splitting per route).
 // We keep references to the dynamic imports so we can prefetch the most-used
@@ -107,6 +110,9 @@ const AppRoutes = () => {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/mcp-login" element={<McpLogin />} />
+          <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/tableau-de-bord" element={<Navigate to="/dashboard" replace />} />
