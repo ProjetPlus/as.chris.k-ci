@@ -33,10 +33,16 @@ export const MemberCard = forwardRef<HTMLDivElement, Props>(function MemberCard(
   const [qr, setQr] = useState("");
   useEffect(() => {
     let m = true;
-    QRCode.toDataURL(memberQrPayload(member), { margin: 0, width: 256, color: { dark: "#3B1F14", light: "#FFFFFF" } })
-      .then((d) => m && setQr(d));
+    // High error correction + pure black for crisp paper scan; larger source resolution.
+    QRCode.toDataURL(memberQrPayload(member), {
+      margin: 1,
+      width: 512,
+      errorCorrectionLevel: "H",
+      color: { dark: "#000000", light: "#FFFFFF" },
+    }).then((d) => m && setQr(d));
     return () => { m = false; };
   }, [member]);
+
 
   const assoc = clean(settings.association_name || "AS.CHRIS.K").toUpperCase();
 

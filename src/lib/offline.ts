@@ -217,16 +217,46 @@ async function flushEntry(client: SupabaseClient, entry: QueueEntry) {
   if (error) throw error;
 }
 
+// Priority order guarantees relational integrity: parent member rows and
+// bundles (which carry ayants droit + guardian) sync BEFORE dependent
+// contributions / deaths. Within a priority band, FIFO by createdAt.
+const TABLE_PRIORITY: Record<string, number> = {
+  members: 0,
+  member_bundle: 0,
+  death_promotion: 1,
+  deaths: 2,
+  contributions: 3,
+  treasury: 4,
+  settings: 4,
+  app_users: 4,
+};
+const priorityOf = (t: string) => TABLE_PRIORITY[t] ?? 5;
+
+// Exponential backoff (cap 10 min). Skipped entries stay in queue for a later tick.
+function nextAttemptAt(entry: QueueEntry) {
+  if (!entry.attempts) return 0;
+  const base = Math.min(600_000, 2000 * Math.pow(2, entry.attempts - 1));
+  const anchor = (entry as any).lastAttemptAt || entry.createdAt;
+  return anchor + base;
+}
+
 export async function flushQueue(client: SupabaseClient, opts: { force?: boolean } = {}) {
   if (syncing) return { flushed: 0, failed: 0, remaining: getQueue().length };
   if (!opts.force && !isOnline()) return { flushed: 0, failed: 0, remaining: getQueue().length };
   syncing = true;
   let flushed = 0;
   let failed = 0;
+  const now = Date.now();
   const remaining: QueueEntry[] = [];
-  write(LAST_SYNC_ATTEMPT_KEY, Date.now());
+  write(LAST_SYNC_ATTEMPT_KEY, now);
   try {
-    for (const entry of getQueue()) {
+    // Sort a snapshot by priority, then FIFO; entries with pending backoff are deferred.
+    const snapshot = [...getQueue()].sort((a, b) => priorityOf(a.table) - priorityOf(b.table) || a.createdAt - b.createdAt);
+    for (const entry of snapshot) {
+      if (nextAttemptAt(entry) > now && !opts.force) {
+        remaining.push(entry);
+        continue;
+      }
       const normalized = { ...entry, payload: normalizePayloadForQueue(entry.table, entry.payload) };
       try {
         await flushEntry(client, normalized);
@@ -238,11 +268,12 @@ export async function flushQueue(client: SupabaseClient, opts: { force?: boolean
       } catch (err: any) {
         failed += 1;
         const next: QueueEntry = { ...normalized, attempts: normalized.attempts + 1, lastError: err?.message || String(err), status: "failed" };
+        (next as any).lastAttemptAt = Date.now();
         remaining.push(next);
         log(next, "failed", next.lastError);
         await writeBaseAudit(client, next, "failed", next.lastError);
         emit({ type: "item", entry: next, flushed });
-        console.warn(`[sync] échec item (retry ${next.attempts}/∞)`, next.table, describePayload(next), next.lastError);
+        console.warn(`[sync] échec item (retry ${next.attempts}/∞ backoff)`, next.table, describePayload(next), next.lastError);
       }
     }
     setQueue(remaining);
@@ -253,6 +284,7 @@ export async function flushQueue(client: SupabaseClient, opts: { force?: boolean
     emit({ type: "done", flushed, failed, remaining: remaining.length });
   }
 }
+
 
 export function startAutoSync(client: SupabaseClient, intervalMs = 15000) {
   const run = () => { if (isOnline()) flushQueue(client, { force: true }).catch(() => {}); };
