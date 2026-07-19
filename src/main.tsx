@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { seedDefaultAdmin, flushQueue, startAutoSync, onSyncEvent } from "@/lib/offline";
+import { flushQueue, startAutoSync, onSyncEvent, installSessionHeaderInterceptor } from "@/lib/offline";
 import { supabase } from "@/integrations/supabase/client";
 import { processPendingPhotos } from "@/lib/photoWorker";
 import { toast } from "sonner";
