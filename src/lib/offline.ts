@@ -313,8 +313,47 @@ export async function authenticateOffline(username: string, password: string) {
   return hash === cached.hash ? { id: cached.id || username, username, role: cached.role, display_name: cached.display_name, is_active: true } : null;
 }
 
-export function seedDefaultAdmin() {
-  return cacheOfflineUser({ username: "admin", role: "super_admin", display_name: "Super Admin" }, "12345678");
+const SESSION_TOKEN_KEY = "aschrisk.session.token";
+export function setSessionToken(token: string | null) {
+  try {
+    if (token) localStorage.setItem(SESSION_TOKEN_KEY, token);
+    else localStorage.removeItem(SESSION_TOKEN_KEY);
+  } catch { /* ignore */ }
+}
+export function getSessionToken(): string | null {
+  try { return localStorage.getItem(SESSION_TOKEN_KEY); } catch { return null; }
+}
+
+/**
+ * Global fetch interceptor: attaches the app session token as the
+ * `x-app-session` header on every request going to our Supabase project,
+ * so Postgres RLS policies can identify the caller.
+ */
+export function installSessionHeaderInterceptor() {
+  if (typeof window === "undefined") return;
+  const w = window as any;
+  if (w.__aschrisk_session_fetch_installed) return;
+  w.__aschrisk_session_fetch_installed = true;
+
+  const originalFetch = window.fetch.bind(window);
+  const supabaseHost = (() => {
+    try { return new URL((import.meta as any).env.VITE_SUPABASE_URL).host; } catch { return ""; }
+  })();
+
+  window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    try {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : (input as Request).url;
+      if (supabaseHost && url && url.includes(supabaseHost)) {
+        const token = getSessionToken();
+        if (token) {
+          const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
+          headers.set("x-app-session", token);
+          return originalFetch(input as any, { ...(init || {}), headers });
+        }
+      }
+    } catch { /* fall through */ }
+    return originalFetch(input as any, init);
+  };
 }
 
 export type LocalSnapshot = { settings: DbSettings; members: DbMember[]; deaths: DbDeath[]; contributions: DbContribution[]; treasury: DbTreasury };

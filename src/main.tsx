@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { seedDefaultAdmin, flushQueue, startAutoSync, onSyncEvent } from "@/lib/offline";
+import { flushQueue, startAutoSync, onSyncEvent, installSessionHeaderInterceptor } from "@/lib/offline";
 import { supabase } from "@/integrations/supabase/client";
 import { processPendingPhotos } from "@/lib/photoWorker";
 import { toast } from "sonner";
@@ -39,9 +39,8 @@ try {
   if (root) root.innerHTML = '<div style="padding:24px;font-family:sans-serif">Erreur de démarrage. Rechargez la page.</div>';
 }
 
-// Best-effort cleanup of any previously hardcoded default admin credential
-// (the seed has been removed for security; this only purges legacy cache).
-Promise.resolve().then(() => seedDefaultAdmin()).catch(() => {});
+// Attach the app-session header to every Supabase request so RLS can identify the caller.
+installSessionHeaderInterceptor();
 
 registerAppServiceWorker().catch(() => {});
 
