@@ -208,6 +208,9 @@ export type Database = {
           adhesion_paid: boolean
           adhesion_payment_date: string | null
           adhesion_payment_method: string | null
+          adhesion_proof_data: string | null
+          adhesion_proof_type: string | null
+          adhesion_transaction_id: string | null
           campement: string
           contribution_status: string
           created_at: string
@@ -237,6 +240,9 @@ export type Database = {
           adhesion_paid?: boolean
           adhesion_payment_date?: string | null
           adhesion_payment_method?: string | null
+          adhesion_proof_data?: string | null
+          adhesion_proof_type?: string | null
+          adhesion_transaction_id?: string | null
           campement?: string
           contribution_status?: string
           created_at?: string
@@ -266,6 +272,9 @@ export type Database = {
           adhesion_paid?: boolean
           adhesion_payment_date?: string | null
           adhesion_payment_method?: string | null
+          adhesion_proof_data?: string | null
+          adhesion_proof_type?: string | null
+          adhesion_transaction_id?: string | null
           campement?: string
           contribution_status?: string
           created_at?: string
