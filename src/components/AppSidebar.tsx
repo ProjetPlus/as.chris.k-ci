@@ -3,7 +3,7 @@ import {
   CreditCard, ScanLine, Settings, Shield, RefreshCw
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import logo from "@/assets/logo-aschrisk.png";
+import { OFFICIAL_ASCHRISK_LOGO_URL } from "@/assets/aschriskOfficialLogo";
 import { useSettings } from "@/db/useDb";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
@@ -81,7 +81,7 @@ export function AppSidebar() {
       <SidebarHeader className="p-4 flex items-center gap-3 border-b border-sidebar-border/60">
         <div className="shrink-0 flex items-center justify-center bg-transparent">
           <img
-            src={logo}
+            src={OFFICIAL_ASCHRISK_LOGO_URL}
             alt={shortName}
             className={collapsed ? "h-10 w-auto object-contain" : "h-16 w-auto object-contain drop-shadow-sm"}
           />

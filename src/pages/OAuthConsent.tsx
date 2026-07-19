@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import logo from "@/assets/logo-aschrisk.png";
+import { OFFICIAL_ASCHRISK_LOGO_URL } from "@/assets/aschriskOfficialLogo";
 
 // Typed wrapper — supabase.auth.oauth is currently beta and may be absent from
 // generated types. Cast to a narrow interface so we never grep node_modules.
@@ -85,7 +85,7 @@ export default function OAuthConsent() {
     <main className="min-h-screen grid place-items-center bg-background p-6">
       <div className="w-full max-w-md rounded-xl border bg-card p-6 shadow-elegant">
         <div className="flex items-center gap-3 mb-4">
-          <img src={logo} alt="AS.CHRIS.K" className="h-10 w-10" />
+          <img src={OFFICIAL_ASCHRISK_LOGO_URL} alt="AS.CHRIS.K" className="h-10 w-auto" />
           <div>
             <div className="text-sm text-muted-foreground">AS.CHRIS.K</div>
             <div className="font-display font-bold text-lg">Autorisation d'accès</div>

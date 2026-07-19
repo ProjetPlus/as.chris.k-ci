@@ -40,6 +40,11 @@ export default defineConfig(({ mode }) => ({
             handler: "CacheFirst",
             options: { cacheName: "aschrisk-assets" },
           },
+          {
+            urlPattern: ({ sameOrigin, url }) => sameOrigin && url.pathname.startsWith("/__l5e/assets-v1/"),
+            handler: "CacheFirst",
+            options: { cacheName: "aschrisk-official-card-assets" },
+          },
         ],
       },
     }),
