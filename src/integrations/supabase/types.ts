@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          role: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          role: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          role?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_users: {
         Row: {
           created_at: string
@@ -399,6 +431,7 @@ export type Database = {
           id: string
           is_active: boolean
           role: string
+          session_token: string
           username: string
         }[]
       }
@@ -411,7 +444,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      current_session_role: { Args: never; Returns: string }
+      current_session_token: { Args: never; Returns: string }
       delete_app_user: { Args: { p_id: string }; Returns: undefined }
+      has_valid_session: { Args: never; Returns: boolean }
       list_app_users: {
         Args: never
         Returns: {
@@ -423,6 +459,7 @@ export type Database = {
           username: string
         }[]
       }
+      logout_app_session: { Args: never; Returns: undefined }
       recalculate_treasury: { Args: never; Returns: undefined }
       update_app_user: {
         Args: {
