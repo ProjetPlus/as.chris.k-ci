@@ -6,11 +6,9 @@ import { fmtDate } from "@/pages/pageUtils";
 import logo from "@/assets/logo-aschrisk.png";
 import flag from "@/assets/flag-civ.png";
 
-// Card size: CR-80 landscape. Rendered at fixed pixel size for pixel-perfect
-// html2canvas capture; the same DOM is used for on-screen preview and PDF.
+// CR-80 landscape rendered at fixed pixel size for pixel-perfect html2canvas capture.
 export const CARD_W_MM = 85.6;
 export const CARD_H_MM = 53.98;
-// Render at 4x mm to px (~101 dpi) then let html2canvas upscale with its scale option.
 export const CARD_W_PX = 856;
 export const CARD_H_PX = 540;
 
@@ -23,8 +21,17 @@ type Props = {
   member: DbMember;
   settings: DbSettings;
   side: "front" | "back";
-  scale?: number; // visual scale for on-screen preview
+  scale?: number;
 };
+
+// AS.CHRIS.K palette (from logo)
+const BORDEAUX = "#7A1F2B";      // trunk color
+const BORDEAUX_DARK = "#5A0F1D";
+const OR = "#D4A94C";
+const CREME = "#FAF5EE";
+const CREME_2 = "#F3E4D5";
+const INK = "#2A1810";
+const BLUE_LABEL = "#0F3D6E";    // similar to reference card labels
 
 export const MemberCard = forwardRef<HTMLDivElement, Props>(function MemberCard(
   { member, settings, side, scale = 1 },
@@ -33,34 +40,24 @@ export const MemberCard = forwardRef<HTMLDivElement, Props>(function MemberCard(
   const [qr, setQr] = useState("");
   useEffect(() => {
     let m = true;
-    // High error correction + pure black for crisp paper scan; larger source resolution.
     QRCode.toDataURL(memberQrPayload(member), {
       margin: 1,
-      width: 512,
+      width: 1024,
       errorCorrectionLevel: "H",
       color: { dark: "#000000", light: "#FFFFFF" },
     }).then((d) => m && setQr(d));
     return () => { m = false; };
   }, [member]);
 
-
   const assoc = clean(settings.association_name || "AS.CHRIS.K").toUpperCase();
-
-  // AS.CHRIS.K palette
-  const bordeaux = "#C4654A";
-  const bordeauxDark = "#8B3E28";
-  const or = "#D4A94C";
-  const creme = "#FAF5EE";
-  const ink = "#2A1810";
-  const bandPale = "#F3E4D5";
 
   const wrapperStyle: React.CSSProperties = {
     width: CARD_W_PX,
     height: CARD_H_PX,
     transform: `scale(${scale})`,
     transformOrigin: "top left",
-    background: creme,
-    color: ink,
+    background: CREME,
+    color: INK,
     fontFamily: "'DM Sans', system-ui, sans-serif",
     position: "relative",
     overflow: "hidden",
@@ -70,50 +67,46 @@ export const MemberCard = forwardRef<HTMLDivElement, Props>(function MemberCard(
 
   return (
     <div ref={ref} style={wrapperStyle} data-side={side}>
-      {/* Decorative curved band */}
+      {/* Subtle guilloché-like corner */}
       <div style={{
         position: "absolute", inset: 0,
-        background: `radial-gradient(circle at 100% 0%, ${bandPale} 0%, ${bandPale} 30%, transparent 31%)`,
+        background: `radial-gradient(circle at 100% 0%, ${CREME_2} 0%, ${CREME_2} 28%, transparent 29%)`,
       }} />
-      <div style={{
-        position: "absolute", top: 0, left: 0, right: 0, height: 96,
-        background: `linear-gradient(90deg, ${bordeauxDark} 0%, ${bordeaux} 70%, ${bordeaux} 100%)`,
-      }} />
-      <div style={{ position: "absolute", top: 96, left: 0, right: 0, height: 4, background: or }} />
 
-      {/* Header row */}
-      <div style={{ position: "absolute", top: 12, left: 24, right: 24, display: "flex", alignItems: "center", gap: 14, height: 72 }}>
-        <img src={logo} alt="" crossOrigin="anonymous" style={{ height: 68, width: 68, objectFit: "contain", background: "#fff", borderRadius: 10, padding: 4 }} />
+      {/* Top header band */}
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: 92,
+        background: `linear-gradient(90deg, ${BORDEAUX_DARK} 0%, ${BORDEAUX} 100%)`,
+      }} />
+      <div style={{ position: "absolute", top: 92, left: 0, right: 0, height: 4, background: OR }} />
+
+      {/* Header content */}
+      <div style={{ position: "absolute", top: 10, left: 22, right: 22, display: "flex", alignItems: "center", gap: 14, height: 74 }}>
+        <img src={logo} alt="" crossOrigin="anonymous" style={{ height: 72, width: 72, objectFit: "contain" }} />
         <div style={{ flex: 1, color: "#fff", lineHeight: 1.1 }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: 22, letterSpacing: 0.4 }}>{assoc}</div>
-          <div style={{ fontSize: 11, opacity: 0.9, marginTop: 4, letterSpacing: 1.2 }}>ASSOCIATION DES CHRÉTIENS DE KOUASSIKANKRO</div>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: 20, letterSpacing: 0.4 }}>{assoc}</div>
+          <div style={{ fontSize: 10, opacity: 0.9, marginTop: 4, letterSpacing: 1.4 }}>MUTUELLE FUNÉRAIRE · CÔTE D'IVOIRE</div>
         </div>
-        <img src={flag} alt="" crossOrigin="anonymous" style={{ height: 44, width: 66, objectFit: "cover", borderRadius: 4, border: "2px solid #fff", boxShadow: "0 2px 4px rgba(0,0,0,.2)" }} />
+        <img src={flag} alt="" crossOrigin="anonymous" style={{ height: 42, width: 62, objectFit: "cover", borderRadius: 3, border: "2px solid #fff", boxShadow: "0 2px 4px rgba(0,0,0,.2)" }} />
       </div>
 
-      {side === "front" ? <FrontBody member={member} qr={qr} /> : <BackBody member={member} qr={qr} settings={settings} />}
+      {side === "front" ? <FrontBody member={member} /> : <BackBody member={member} qr={qr} settings={settings} />}
 
       {/* Footer band */}
       <div style={{
-        position: "absolute", bottom: 0, left: 0, right: 0, height: 32,
-        background: `linear-gradient(90deg, ${bordeaux} 0%, ${bordeauxDark} 100%)`,
+        position: "absolute", bottom: 0, left: 0, right: 0, height: 28,
+        background: `linear-gradient(90deg, ${BORDEAUX} 0%, ${BORDEAUX_DARK} 100%)`,
         display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 22px",
-        color: "#fff", fontSize: 11, letterSpacing: 1.4, fontWeight: 600,
+        color: "#fff", fontSize: 10, letterSpacing: 1.6, fontWeight: 600,
       }}>
-        <span>{side === "front" ? "CARTE OFFICIELLE" : "RÉPUBLIQUE DE CÔTE D'IVOIRE"}</span>
+        <span>{side === "front" ? "CARTE OFFICIELLE DE MEMBRE" : "RÉPUBLIQUE DE CÔTE D'IVOIRE"}</span>
         <span>AS.CHRIS.K</span>
       </div>
     </div>
   );
 });
 
-function FrontBody({ member, qr }: { member: DbMember; qr: string }) {
-  const or = "#D4A94C";
-  const bordeaux = "#C4654A";
-  const ink = "#2A1810";
-  const label: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: bordeaux, letterSpacing: 1, textTransform: "uppercase" };
-  const value: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: ink, marginTop: 2 };
-
+function FrontBody({ member }: { member: DbMember }) {
   const photo = member.photo && !member.photo.startsWith("data:")
     ? `${member.photo}${member.photo.includes("?") ? "&" : "?"}v=${encodeURIComponent(member.updated_at || "")}`
     : member.photo;
@@ -122,85 +115,104 @@ function FrontBody({ member, qr }: { member: DbMember; qr: string }) {
     <>
       {/* Badge CARTE DE MEMBRE */}
       <div style={{
-        position: "absolute", top: 118, left: 24,
-        background: bordeaux, color: "#fff",
-        padding: "8px 18px", borderRadius: 6,
-        fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: 16, letterSpacing: 2,
+        position: "absolute", top: 110, left: 22,
+        background: BORDEAUX, color: "#fff",
+        padding: "7px 16px", borderRadius: 5,
+        fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: 15, letterSpacing: 2.4,
         boxShadow: "0 3px 6px rgba(0,0,0,.15)",
       }}>CARTE DE MEMBRE</div>
 
-      {/* Photo */}
+      {/* Photo box (top right) */}
       <div style={{
-        position: "absolute", top: 118, right: 24, width: 150, height: 190,
-        borderRadius: 8, background: "#fff", border: `3px solid ${or}`,
+        position: "absolute", top: 108, right: 22, width: 140, height: 178,
+        borderRadius: 6, background: "#fff", border: `3px solid ${OR}`,
         overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center",
         boxShadow: "0 4px 10px rgba(0,0,0,.15)",
       }}>
         {photo ? (
           <img src={photo} alt="" crossOrigin="anonymous" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
-          <span style={{ color: bordeaux, fontWeight: 700, fontSize: 12, letterSpacing: 2 }}>PHOTO</span>
+          <span style={{ color: BORDEAUX, fontWeight: 700, fontSize: 11, letterSpacing: 2 }}>PHOTO</span>
         )}
       </div>
 
-      {/* Info fields */}
-      <div style={{ position: "absolute", top: 176, left: 28, right: 200, display: "grid", gap: 8 }}>
-        <Field label="NOM" value={clean(member.last_name).toUpperCase()} />
-        <Field label="PRÉNOMS" value={clean(member.first_name).toUpperCase()} />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <Field label="N° MEMBRE" value={clean(member.member_id)} mono />
-          <Field label="ADHÉSION" value={fmtDate(member.registration_date)} />
-        </div>
-        <Field label="CAMPEMENT" value={clean(member.campement)} />
+      {/* Info block */}
+      <div style={{ position: "absolute", top: 158, left: 26, right: 180, display: "grid", gap: 6 }}>
+        <Row label="NOM" value={clean(member.last_name).toUpperCase()} />
+        <Row label="PRÉNOMS" value={clean(member.first_name).toUpperCase()} />
+        <Row label="N° MEMBRE" value={clean(member.member_id)} mono />
+        <Row label="CAMPEMENT" value={clean(member.campement)} />
+        <Row label="SOUS-PRÉF." value={clean(member.sous_prefecture)} />
+        <Row label="TÉLÉPHONE" value={clean(member.phone)} />
+        <Row label="ADHÉSION" value={fmtDate(member.registration_date)} />
       </div>
 
-      {/* QR bottom-left */}
-      {qr && (
-        <div style={{ position: "absolute", bottom: 46, right: 28, width: 78, height: 78, background: "#fff", padding: 4, borderRadius: 6, border: `2px solid ${or}` }}>
-          <img src={qr} alt="" style={{ width: "100%", height: "100%" }} />
+      {/* Signature (under photo) */}
+      <div style={{
+        position: "absolute", top: 296, right: 22, width: 140, textAlign: "center",
+      }}>
+        <div style={{ borderTop: `1px solid ${BORDEAUX}`, paddingTop: 4, fontSize: 9, color: INK, letterSpacing: 1, fontWeight: 700 }}>
+          COORDONNATEUR GÉNÉRAL
         </div>
-      )}
+      </div>
     </>
   );
 }
 
-function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  const bordeaux = "#C4654A";
-  const ink = "#2A1810";
+function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div>
-      <div style={{ fontSize: 9, fontWeight: 700, color: bordeaux, letterSpacing: 1.2, textTransform: "uppercase" }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: ink, marginTop: 1, fontFamily: mono ? "'JetBrains Mono', monospace" : undefined, lineHeight: 1.15 }}>{value || "—"}</div>
+    <div style={{ display: "grid", gridTemplateColumns: "110px 1fr", alignItems: "baseline", columnGap: 8 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: BLUE_LABEL, letterSpacing: 1 }}>{label}</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: mono ? "'JetBrains Mono', monospace" : undefined, lineHeight: 1.15 }}>{value || "—"}</div>
     </div>
   );
 }
 
 function BackBody({ member, qr, settings }: { member: DbMember; qr: string; settings: DbSettings }) {
-  const bordeaux = "#C4654A";
-  const or = "#D4A94C";
-  const ink = "#2A1810";
   return (
     <>
-      <div style={{ position: "absolute", top: 130, left: 32, right: 32, fontSize: 12, lineHeight: 1.55, color: ink, textAlign: "center" }}>
-        Cette carte identifie un membre actif de l'Association des Chrétiens de Kouassikankro (AS.CHRIS.K). Sa présentation est requise pour toute opération liée aux cotisations, obsèques et prestations de l'association. En cas de perte, prévenir le secrétariat au {clean(settings.phone)}.
+      <div style={{
+        position: "absolute", top: 112, left: 26, right: 26,
+        fontSize: 11.5, lineHeight: 1.55, color: INK, textAlign: "justify",
+      }}>
+        Cette carte identifie un membre actif de l'Association des Chrétiens de Kouassikankro (AS.CHRIS.K).
+        Sa présentation est requise pour toute opération liée aux cotisations, obsèques et prestations de
+        l'association. En cas de perte, prévenir le secrétariat au {clean(settings.phone)}.
       </div>
 
-      <div style={{ position: "absolute", bottom: 96, left: 32, display: "flex", alignItems: "center", gap: 14 }}>
-        {qr && (
-          <div style={{ width: 96, height: 96, background: "#fff", padding: 4, borderRadius: 6, border: `2px solid ${or}` }}>
-            <img src={qr} alt="" style={{ width: "100%", height: "100%" }} />
-          </div>
-        )}
-        <div>
-          <div style={{ fontSize: 10, color: bordeaux, letterSpacing: 1.4, fontWeight: 700 }}>N° MEMBRE</div>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 16, fontWeight: 700, color: ink }}>{clean(member.member_id)}</div>
-          <div style={{ fontSize: 10, color: ink, marginTop: 4, opacity: 0.75 }}>Émise le {fmtDate(member.registration_date)}</div>
+      {/* Big QR on the left */}
+      {qr && (
+        <div style={{
+          position: "absolute", bottom: 44, left: 26, width: 210, height: 210,
+          background: "#fff", padding: 8, borderRadius: 8, border: `3px solid ${OR}`,
+          boxShadow: "0 4px 10px rgba(0,0,0,.10)",
+        }}>
+          <img src={qr} alt="" style={{ width: "100%", height: "100%" }} />
         </div>
-      </div>
+      )}
 
-      <div style={{ position: "absolute", bottom: 46, right: 32, textAlign: "center" }}>
-        <div style={{ width: 180, borderTop: `1.5px solid ${bordeaux}`, paddingTop: 4, fontSize: 10, color: ink, letterSpacing: 1, fontWeight: 600 }}>
-          COORDONNATEUR GÉNÉRAL
+      {/* Member details on the right */}
+      <div style={{ position: "absolute", bottom: 60, right: 26, width: 380, display: "grid", gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 10, color: BLUE_LABEL, letterSpacing: 1.4, fontWeight: 700 }}>N° MEMBRE</div>
+          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 20, fontWeight: 700, color: BORDEAUX }}>{clean(member.member_id)}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, color: BLUE_LABEL, letterSpacing: 1.4, fontWeight: 700 }}>TITULAIRE</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>{clean(fullName(member)).toUpperCase()}</div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <div>
+            <div style={{ fontSize: 9, color: BLUE_LABEL, letterSpacing: 1.2, fontWeight: 700 }}>ÉMISE LE</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: INK }}>{fmtDate(member.registration_date)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 9, color: BLUE_LABEL, letterSpacing: 1.2, fontWeight: 700 }}>STATUT</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: INK, textTransform: "capitalize" }}>{clean(member.status)}</div>
+          </div>
+        </div>
+        <div style={{ fontSize: 10, color: INK, opacity: 0.7, marginTop: 4 }}>
+          Scanner ce QR code pour vérifier l'appartenance du membre.
         </div>
       </div>
     </>
