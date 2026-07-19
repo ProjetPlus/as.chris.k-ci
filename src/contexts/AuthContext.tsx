@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const offlineUser = await authenticateOffline(cleanUsername, password);
     if (!navigator.onLine && offlineUser) {
+      // Offline: no new server session token can be minted; keep any existing one.
       setUser(offlineUser as AppUser);
       return { ok: true };
     }
@@ -50,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         is_active: found.is_active,
         created_at: found.created_at,
       };
+      if (found.session_token) setSessionToken(found.session_token);
       await cacheOfflineUser(nextUser, password);
       setUser(nextUser);
       return { ok: true };
@@ -60,7 +62,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const value = useMemo<AuthContextValue>(() => ({ user, isAuthenticated: Boolean(user), login, logout: () => setUser(null) }), [user]);
+  const logout = () => {
+    const token = getSessionToken();
+    if (token && navigator.onLine) {
+      db.rpc("logout_app_session").catch(() => {});
+    }
+    setSessionToken(null);
+    setUser(null);
+  };
+
+  const value = useMemo<AuthContextValue>(() => ({ user, isAuthenticated: Boolean(user), login, logout }), [user]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
