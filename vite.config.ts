@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => ({
       injectRegister: null,
       filename: "sw.js",
       devOptions: { enabled: false },
-      includeAssets: ["favicon.png", "icon-192.png", "icon-512.png", "apple-touch-icon.png"],
+      includeAssets: ["favicon.png", "apple-touch-icon.png"],
       manifest: false,
       workbox: {
         navigateFallback: "/index.html",
@@ -39,6 +39,11 @@ export default defineConfig(({ mode }) => ({
             urlPattern: ({ sameOrigin, url }) => sameOrigin && /\/assets\/.+\.(js|css|png|svg|woff2?)$/.test(url.pathname),
             handler: "CacheFirst",
             options: { cacheName: "aschrisk-assets" },
+          },
+          {
+            urlPattern: ({ sameOrigin, url }) => sameOrigin && url.pathname.startsWith("/__l5e/assets-v1/"),
+            handler: "CacheFirst",
+            options: { cacheName: "aschrisk-official-card-assets" },
           },
         ],
       },

@@ -5,7 +5,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import logo from "@/assets/logo-aschrisk.png";
+import { OFFICIAL_ASCHRISK_LOGO_URL } from "@/assets/aschriskOfficialLogo";
 
 /**
  * Supabase Auth login dedicated to the MCP OAuth consent flow.
@@ -82,7 +82,7 @@ export default function McpLogin() {
     <main className="min-h-screen grid place-items-center bg-background p-6">
       <form onSubmit={submit} className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-elegant">
         <div className="flex flex-col items-center mb-4">
-          <img src={logo} alt="AS.CHRIS.K" className="h-14 w-14 mb-2" />
+          <img src={OFFICIAL_ASCHRISK_LOGO_URL} alt="AS.CHRIS.K" className="h-14 w-auto mb-2" />
           <h1 className="text-xl font-display font-bold">Connexion pour intégrations</h1>
           <p className="text-xs text-muted-foreground mt-1 text-center">
             Utilisé pour autoriser ChatGPT, Claude, Cursor ou tout autre client MCP à accéder aux
