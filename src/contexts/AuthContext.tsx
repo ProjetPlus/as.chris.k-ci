@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { AppUser } from "@/db/database";
 import { supabase } from "@/integrations/supabase/client";
-import { authenticateOffline, cacheOfflineUser } from "@/lib/offline";
+import { authenticateOffline, cacheOfflineUser, setSessionToken, getSessionToken } from "@/lib/offline";
 
 const db = supabase as any;
 
