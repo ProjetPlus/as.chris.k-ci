@@ -1,8 +1,11 @@
 // Edge function: extract an ID/document number from a photo using Lovable AI (Gemini vision).
-// Public (no JWT) — input is a data URL or base64 image; output { number: string | null, raw: string }.
+// Requires an authenticated app session (x-app-session header) so anonymous callers cannot
+// drain paid AI credits.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-app-session",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -10,6 +13,25 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // --- Auth: require a valid app session token ---
+    const sessionToken = req.headers.get("x-app-session");
+    if (!sessionToken) return json({ error: "unauthorized" }, 401);
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !serviceKey) return json({ error: "server misconfigured" }, 500);
+
+    const admin = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: session, error: sErr } = await admin
+      .from("app_sessions")
+      .select("user_id, expires_at")
+      .eq("token", sessionToken)
+      .maybeSingle();
+    if (sErr || !session) return json({ error: "unauthorized" }, 401);
+    if (new Date(session.expires_at).getTime() < Date.now()) return json({ error: "session expired" }, 401);
+
     const { image, idType } = await req.json();
     if (!image || typeof image !== "string") {
       return json({ error: "image (data URL) required" }, 400);
