@@ -51,6 +51,9 @@ export type DbMember = {
   adhesion_amount: number;
   adhesion_payment_method?: string;
   adhesion_payment_date?: string;
+  adhesion_proof_type?: "recu" | "transaction_id" | "";
+  adhesion_proof_data?: string;
+  adhesion_transaction_id?: string;
   secondary_members: CoveredPerson[];
   guardian: GuardianPerson;
   total_covered_persons: number;
