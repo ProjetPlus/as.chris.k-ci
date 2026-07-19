@@ -3,7 +3,7 @@ import QRCode from "qrcode";
 import type { DbMember, DbSettings } from "@/db/database";
 import { fullName } from "@/lib/memberWorkflow";
 import { fmtDate } from "@/pages/pageUtils";
-import logo from "@/assets/logo-aschrisk.png";
+import { OFFICIAL_ASCHRISK_LOGO_URL } from "@/assets/aschriskOfficialLogo";
 import flag from "@/assets/flag-civ.png";
 
 // CR-80 landscape rendered at fixed pixel size for pixel-perfect html2canvas capture.
@@ -28,10 +28,12 @@ type Props = {
 const BORDEAUX = "#7A1F2B";      // trunk color
 const BORDEAUX_DARK = "#5A0F1D";
 const OR = "#D4A94C";
+const GREEN = "#16895A";
+const BLUE = "#0B6EA8";
 const CREME = "#FAF5EE";
 const CREME_2 = "#F3E4D5";
 const INK = "#2A1810";
-const BLUE_LABEL = "#0F3D6E";    // similar to reference card labels
+const BLUE_LABEL = "#0F3D6E";
 
 export const MemberCard = forwardRef<HTMLDivElement, Props>(function MemberCard(
   { member, settings, side, scale = 1 },
@@ -75,19 +77,20 @@ export const MemberCard = forwardRef<HTMLDivElement, Props>(function MemberCard(
 
       {/* Top header band */}
       <div style={{
-        position: "absolute", top: 0, left: 0, right: 0, height: 92,
-        background: `linear-gradient(90deg, ${BORDEAUX_DARK} 0%, ${BORDEAUX} 100%)`,
+        position: "absolute", top: 0, left: 0, right: 0, height: 118,
+        background: `linear-gradient(90deg, ${CREME} 0%, #FFFFFF 50%, ${CREME_2} 100%)`,
       }} />
-      <div style={{ position: "absolute", top: 92, left: 0, right: 0, height: 4, background: OR }} />
+      <div style={{ position: "absolute", top: 118, left: 0, right: 0, height: 9, background: `linear-gradient(90deg, ${BORDEAUX_DARK}, ${OR}, ${GREEN}, ${BLUE})` }} />
 
       {/* Header content */}
-      <div style={{ position: "absolute", top: 10, left: 22, right: 22, display: "flex", alignItems: "center", gap: 14, height: 74 }}>
-        <img src={logo} alt="" crossOrigin="anonymous" style={{ height: 72, width: 72, objectFit: "contain" }} />
-        <div style={{ flex: 1, color: "#fff", lineHeight: 1.1 }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: 20, letterSpacing: 0.4 }}>{assoc}</div>
-          <div style={{ fontSize: 10, opacity: 0.9, marginTop: 4, letterSpacing: 1.4 }}>MUTUELLE FUNÉRAIRE · CÔTE D'IVOIRE</div>
+      <div style={{ position: "absolute", top: 10, left: 22, right: 22, display: "flex", alignItems: "center", gap: 16, height: 96 }}>
+        <img src={OFFICIAL_ASCHRISK_LOGO_URL} alt="" crossOrigin="anonymous" style={{ height: 96, width: 94, objectFit: "contain", background: "transparent" }} />
+        <div style={{ flex: 1, color: INK, lineHeight: 1.05 }}>
+          <div style={{ fontWeight: 900, fontSize: 22, color: BORDEAUX_DARK }}>{assoc}</div>
+          <div style={{ fontWeight: 800, fontSize: 13, color: BLUE_LABEL, marginTop: 6, letterSpacing: 0.6 }}>ASSOCIATION DES CHRÉTIENS DE KOUASSIKANKRO</div>
+          <div style={{ fontSize: 10, color: GREEN, marginTop: 4, letterSpacing: 1.4, fontWeight: 800 }}>MUTUELLE FUNÉRAIRE · CÔTE D'IVOIRE</div>
         </div>
-        <img src={flag} alt="" crossOrigin="anonymous" style={{ height: 42, width: 62, objectFit: "cover", borderRadius: 3, border: "2px solid #fff", boxShadow: "0 2px 4px rgba(0,0,0,.2)" }} />
+        <img src={flag} alt="" crossOrigin="anonymous" style={{ height: 62, width: 92, objectFit: "cover", borderRadius: 4, border: `2px solid ${OR}`, boxShadow: "0 2px 4px rgba(0,0,0,.16)" }} />
       </div>
 
       {side === "front" ? <FrontBody member={member} /> : <BackBody member={member} qr={qr} settings={settings} />}
@@ -115,29 +118,29 @@ function FrontBody({ member }: { member: DbMember }) {
     <>
       {/* Badge CARTE DE MEMBRE */}
       <div style={{
-        position: "absolute", top: 110, left: 22,
-        background: BORDEAUX, color: "#fff",
-        padding: "7px 16px", borderRadius: 5,
-        fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: 15, letterSpacing: 2.4,
+        position: "absolute", top: 145, left: 22,
+        background: `linear-gradient(90deg, ${BORDEAUX_DARK}, ${BORDEAUX})`, color: "#fff",
+        padding: "8px 22px", borderRadius: 4,
+        fontWeight: 900, fontSize: 24, letterSpacing: 1.6,
         boxShadow: "0 3px 6px rgba(0,0,0,.15)",
       }}>CARTE DE MEMBRE</div>
 
       {/* Photo box (top right) */}
       <div style={{
-        position: "absolute", top: 108, right: 22, width: 140, height: 178,
-        borderRadius: 6, background: "#fff", border: `3px solid ${OR}`,
+        position: "absolute", top: 148, right: 26, width: 184, height: 232,
+        borderRadius: 8, background: "#E8E6E1", border: `4px solid ${BLUE}`,
         overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center",
         boxShadow: "0 4px 10px rgba(0,0,0,.15)",
       }}>
         {photo ? (
           <img src={photo} alt="" crossOrigin="anonymous" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
-          <span style={{ color: BORDEAUX, fontWeight: 700, fontSize: 11, letterSpacing: 2 }}>PHOTO</span>
+          <span style={{ color: BORDEAUX, fontWeight: 800, fontSize: 13, letterSpacing: 2 }}>PHOTO</span>
         )}
       </div>
 
       {/* Info block */}
-      <div style={{ position: "absolute", top: 158, left: 26, right: 180, display: "grid", gap: 6 }}>
+      <div style={{ position: "absolute", top: 210, left: 30, right: 244, display: "grid", gap: 9 }}>
         <Row label="NOM" value={clean(member.last_name).toUpperCase()} />
         <Row label="PRÉNOMS" value={clean(member.first_name).toUpperCase()} />
         <Row label="N° MEMBRE" value={clean(member.member_id)} mono />
@@ -148,10 +151,8 @@ function FrontBody({ member }: { member: DbMember }) {
       </div>
 
       {/* Signature (under photo) */}
-      <div style={{
-        position: "absolute", top: 296, right: 22, width: 140, textAlign: "center",
-      }}>
-        <div style={{ borderTop: `1px solid ${BORDEAUX}`, paddingTop: 4, fontSize: 9, color: INK, letterSpacing: 1, fontWeight: 700 }}>
+      <div style={{ position: "absolute", top: 402, right: 26, width: 184, textAlign: "center" }}>
+        <div style={{ borderTop: `2px solid ${BORDEAUX}`, paddingTop: 5, fontSize: 10, color: INK, letterSpacing: 1, fontWeight: 800 }}>
           COORDONNATEUR GÉNÉRAL
         </div>
       </div>
@@ -161,9 +162,9 @@ function FrontBody({ member }: { member: DbMember }) {
 
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "110px 1fr", alignItems: "baseline", columnGap: 8 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: BLUE_LABEL, letterSpacing: 1 }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: mono ? "'JetBrains Mono', monospace" : undefined, lineHeight: 1.15 }}>{value || "—"}</div>
+    <div style={{ display: "grid", gridTemplateColumns: "122px 1fr", alignItems: "baseline", columnGap: 8 }}>
+      <div style={{ fontSize: 13, fontWeight: 900, color: BLUE_LABEL, letterSpacing: 0.5 }}>{label} :</div>
+      <div style={{ fontSize: 16, fontWeight: 800, color: INK, fontFamily: mono ? "'JetBrains Mono', monospace" : undefined, lineHeight: 1.12 }}>{value || "—"}</div>
     </div>
   );
 }
@@ -183,7 +184,7 @@ function BackBody({ member, qr, settings }: { member: DbMember; qr: string; sett
       {/* Big QR on the left */}
       {qr && (
         <div style={{
-          position: "absolute", bottom: 44, left: 26, width: 210, height: 210,
+          position: "absolute", bottom: 42, left: 28, width: 272, height: 272,
           background: "#fff", padding: 8, borderRadius: 8, border: `3px solid ${OR}`,
           boxShadow: "0 4px 10px rgba(0,0,0,.10)",
         }}>
@@ -192,7 +193,7 @@ function BackBody({ member, qr, settings }: { member: DbMember; qr: string; sett
       )}
 
       {/* Member details on the right */}
-      <div style={{ position: "absolute", bottom: 60, right: 26, width: 380, display: "grid", gap: 10 }}>
+      <div style={{ position: "absolute", bottom: 64, right: 28, width: 472, display: "grid", gap: 12 }}>
         <div>
           <div style={{ fontSize: 10, color: BLUE_LABEL, letterSpacing: 1.4, fontWeight: 700 }}>N° MEMBRE</div>
           <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 20, fontWeight: 700, color: BORDEAUX }}>{clean(member.member_id)}</div>
