@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => ({
       injectRegister: null,
       filename: "sw.js",
       devOptions: { enabled: false },
-      includeAssets: ["favicon.png", "apple-touch-icon.png"],
+      includeAssets: ["favicon.png", "icon-192.png", "icon-512.png", "apple-touch-icon.png"],
       manifest: false,
       workbox: {
         navigateFallback: "/index.html",
