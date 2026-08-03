@@ -205,17 +205,23 @@ function BackBody({ member, qr, settings }: { member: DbMember; qr: string; sett
         </div>
       )}
 
-      <div style={{ position: "absolute", top: 220, right: 30, width: 456, display: "grid", gap: 14 }}>
+      <div style={{ position: "absolute", top: 216, right: 30, width: 456, display: "grid", gap: 13 }}>
         <Field label="N° MEMBRE" value={clean(member.member_id)} mono big />
         <Field label="TITULAIRE" value={clean(fullName(member)).toUpperCase()} />
+        <Field label="PERSONNE DE TUTEL" value={guardianName(member) || "—"} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <Field label="ÉMISE LE" value={fmtDate(member.registration_date)} small />
           <Field label="STATUT" value={clean(member.status).toUpperCase()} small />
         </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <Field label="PERS. COUVERTES" value={String(member.total_covered_persons ?? 1)} small />
+          <Field label="COTISATIONS" value={clean(member.contribution_status).toUpperCase()} small />
+        </div>
         <div style={{ fontSize: 10, color: INK, opacity: 0.65 }}>
-          Scanner le QR code pour vérifier l'appartenance du membre.
+          Scanner le QR code pour vérifier l'appartenance du membre · Secrétariat {clean(settings.phone)}
         </div>
       </div>
+
     </>
   );
 }
