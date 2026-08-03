@@ -139,15 +139,18 @@ function FrontBody({ member }: { member: DbMember }) {
       </div>
 
       {/* Identity rows */}
-      <div style={{ position: "absolute", top: 200, left: 30, right: 240, display: "grid", gap: 7 }}>
+      <div style={{ position: "absolute", top: 196, left: 30, right: 236, display: "grid", gap: 8 }}>
         <Row label="NOM" value={clean(member.last_name).toUpperCase()} strong />
         <Row label="PRÉNOMS" value={clean(member.first_name).toUpperCase()} strong />
         <Row label="N° MEMBRE" value={clean(member.member_id)} mono />
         <Row label="CAMPEMENT" value={clean(member.campement)} />
         <Row label="SOUS-PRÉF." value={clean(member.sous_prefecture)} />
         <Row label="TÉLÉPHONE" value={clean(member.phone)} />
+        <Row label="PERS. COUVERTES" value={String(member.total_covered_persons ?? 1)} />
+        <Row label="PERS. DE TUTEL" value={clean(guardianName(member)) || "—"} />
         <Row label="ADHÉSION" value={fmtDate(member.registration_date)} />
       </div>
+
 
       {/* Signature under photo */}
       <div style={{ position: "absolute", top: 372, right: 30, width: 176, textAlign: "center" }}>
