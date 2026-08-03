@@ -116,11 +116,23 @@ export default function Cards() {
 }
 
 function CardStage({ label, children }: { label: string; children: React.ReactNode }) {
-  const scale = 0.62;
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.5);
+
+  useLayoutEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const apply = () => setScale(Math.min(1, el.clientWidth / CARD_W_PX));
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div className="space-y-3">
       <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div style={{ width: CARD_W_PX * scale, height: CARD_H_PX * scale, position: "relative" }} className="mx-auto">
+      <div ref={boxRef} className="w-full" style={{ height: CARD_H_PX * scale, position: "relative" }}>
         <div style={{ transform: `scale(${scale})`, transformOrigin: "top left", width: CARD_W_PX, height: CARD_H_PX }}>
           {children}
         </div>
@@ -128,4 +140,5 @@ function CardStage({ label, children }: { label: string; children: React.ReactNo
     </div>
   );
 }
+
 
