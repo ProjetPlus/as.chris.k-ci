@@ -215,7 +215,7 @@ function BackBody({ member, qr, settings }: { member: DbMember; qr: string; sett
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <Field label="PERS. COUVERTES" value={String(member.total_covered_persons ?? 1)} small />
-          <Field label="COTISATIONS" value={clean(member.contribution_status).toUpperCase()} small />
+          <Field label="COTISATIONS" value={clean(member.contribution_status).replace(/_/g, " ").toUpperCase()} small />
         </div>
         <div style={{ fontSize: 10, color: INK, opacity: 0.65 }}>
           Scanner le QR code pour vérifier l'appartenance du membre · Secrétariat {clean(settings.phone)}
