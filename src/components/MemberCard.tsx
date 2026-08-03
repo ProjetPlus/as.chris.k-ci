@@ -14,6 +14,12 @@ export const CARD_H_PX = 540;
 
 const clean = (v: unknown) => String(v ?? "").replace(/\//g, " ");
 
+const guardianName = (member: DbMember) => {
+  const g = (member as unknown as { guardian?: { first_name?: string; last_name?: string; name?: string } }).guardian;
+  if (!g) return "";
+  return (g.name || `${g.last_name ?? ""} ${g.first_name ?? ""}`).trim().toUpperCase();
+};
+
 export const memberQrPayload = (member: Pick<DbMember, "member_id" | "first_name" | "last_name">) =>
   JSON.stringify({ member_id: clean(member.member_id), name: clean(fullName(member)) });
 
