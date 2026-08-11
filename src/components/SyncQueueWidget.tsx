@@ -35,10 +35,16 @@ export function SyncQueueWidget() {
         <CardTitle className="text-base flex items-center gap-2">
           <CloudUpload className="h-4 w-4 text-accent" /> File de synchronisation
         </CardTitle>
-        <Button size="sm" variant="outline" onClick={handleSync} disabled={!online || syncing}>
-          {syncing ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : <CloudUpload className="h-3 w-3 mr-1" />}
-          Synchroniser
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing}>
+            {syncing ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : <CloudUpload className="h-3 w-3 mr-1" />}
+            Synchroniser
+          </Button>
+          <Button size="sm" onClick={handleForce} disabled={syncing}>
+            <RefreshCw className={`h-3 w-3 mr-1 ${syncing ? "animate-spin" : ""}`} /> Tout forcer
+          </Button>
+        </div>
+
 
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
