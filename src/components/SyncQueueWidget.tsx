@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { CloudUpload, RefreshCw, ScrollText, Trash2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getLastSuccessfulSync, getLastSyncAttempt, getQueueStats, getSyncLog, clearSyncLog, onSyncEvent, type SyncLogEntry } from "@/lib/offline";
+import { getLastSuccessfulSync, getLastSyncAttempt, getQueueStats, getSyncLog, clearSyncLog, onSyncEvent, forceSyncAll, type SyncLogEntry } from "@/lib/offline";
+import { supabase } from "@/integrations/supabase/client";
+
 import { useOnlineStatus } from "@/lib/online";
 import { toast } from "sonner";
 
