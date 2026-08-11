@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { CloudUpload, RefreshCw, ScrollText, Trash2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getLastSuccessfulSync, getLastSyncAttempt, getQueueStats, getSyncLog, clearSyncLog, onSyncEvent, type SyncLogEntry } from "@/lib/offline";
+import { getLastSuccessfulSync, getLastSyncAttempt, getQueueStats, getSyncLog, clearSyncLog, onSyncEvent, forceSyncAll, type SyncLogEntry } from "@/lib/offline";
+import { supabase } from "@/integrations/supabase/client";
+
 import { useOnlineStatus } from "@/lib/online";
 import { toast } from "sonner";
 
@@ -29,16 +31,31 @@ export function SyncQueueWidget() {
     else toast.info("Aucune opération en attente");
   };
 
+  const handleForce = async () => {
+    const result = await forceSyncAll(supabase as any);
+    setStats(getQueueStats());
+    if (result.flushed > 0) toast.success(`Forcé : ${result.flushed} opération(s) synchronisée(s)`);
+    else if (result.remaining > 0) toast.error("Forçage incomplet", { description: `${result.remaining} opération(s) restent en attente.` });
+    else toast.info("Aucune opération en attente");
+  };
+
+
   return (
     <Card className="border-border/50">
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <CardTitle className="text-base flex items-center gap-2">
           <CloudUpload className="h-4 w-4 text-accent" /> File de synchronisation
         </CardTitle>
-        <Button size="sm" variant="outline" onClick={handleSync} disabled={!online || syncing}>
-          {syncing ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : <CloudUpload className="h-3 w-3 mr-1" />}
-          Synchroniser
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing}>
+            {syncing ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : <CloudUpload className="h-3 w-3 mr-1" />}
+            Synchroniser
+          </Button>
+          <Button size="sm" onClick={handleForce} disabled={syncing}>
+            <RefreshCw className={`h-3 w-3 mr-1 ${syncing ? "animate-spin" : ""}`} /> Tout forcer
+          </Button>
+        </div>
+
 
       </CardHeader>
       <CardContent className="space-y-3 text-sm">

@@ -286,6 +286,25 @@ export async function flushQueue(client: SupabaseClient, opts: { force?: boolean
 }
 
 
+// Force EVERY pending operation now: clears backoff timers and repeats passes
+// until nothing more can be flushed. Used by the "Tout forcer" action and login.
+export async function forceSyncAll(client: SupabaseClient, maxPasses = 5) {
+  const q = getQueue().map((e) => ({ ...e, attempts: 0, lastAttemptAt: 0 } as QueueEntry));
+  setQueue(q);
+  let flushed = 0;
+  let failed = 0;
+  let remaining = q.length;
+  for (let i = 0; i < maxPasses; i++) {
+    const r = await flushQueue(client, { force: true });
+    flushed += r.flushed;
+    failed = r.failed;
+    remaining = r.remaining;
+    if (r.remaining === 0 || r.flushed === 0) break;
+  }
+  return { flushed, failed, remaining };
+}
+
+
 export function startAutoSync(client: SupabaseClient, intervalMs = 15000) {
   const run = () => { if (isOnline()) flushQueue(client, { force: true }).catch(() => {}); };
   window.addEventListener("online", () => { console.info("[sync] network online -> flushing queue"); run(); });

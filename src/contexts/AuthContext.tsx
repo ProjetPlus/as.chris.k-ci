@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { AppUser } from "@/db/database";
 import { supabase } from "@/integrations/supabase/client";
-import { authenticateOffline, cacheOfflineUser, setSessionToken, getSessionToken } from "@/lib/offline";
+import { authenticateOffline, cacheOfflineUser, setSessionToken, getSessionToken, forceSyncAll } from "@/lib/offline";
 
 const db = supabase as any;
 
@@ -38,28 +38,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { ok: true };
     }
 
-    try {
-      const { data, error } = await db.rpc("authenticate_app_user", { p_username: cleanUsername, p_password: password });
-      if (error) throw error;
-      const found = Array.isArray(data) ? data[0] : data;
-      if (!found) return { ok: false, error: "Identifiant ou mot de passe incorrect" };
-      const nextUser: AppUser = {
-        id: found.id,
-        username: found.username,
-        role: found.role,
-        display_name: found.display_name,
-        is_active: found.is_active,
-        created_at: found.created_at,
-      };
-      if (found.session_token) setSessionToken(found.session_token);
-      await cacheOfflineUser(nextUser, password);
-      setUser(nextUser);
-      return { ok: true };
-    } catch {
-      if (!offlineUser) return { ok: false, error: "Connexion impossible. Réessayez avec un compte déjà utilisé ici." };
+    // Online path: retry a few times — a transient network hiccup (or a backend
+    // waking up) must never block a legitimate login.
+    let lastErr: any = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const { data, error } = await db.rpc("authenticate_app_user", { p_username: cleanUsername, p_password: password });
+        if (error) throw error;
+        const found = Array.isArray(data) ? data[0] : data;
+        if (!found) return { ok: false, error: "Identifiant ou mot de passe incorrect" };
+        const nextUser: AppUser = {
+          id: found.id,
+          username: found.username,
+          role: found.role,
+          display_name: found.display_name,
+          is_active: found.is_active,
+          created_at: found.created_at,
+        };
+        if (found.session_token) setSessionToken(found.session_token);
+        await cacheOfflineUser(nextUser, password);
+        setUser(nextUser);
+        // Push everything pending as soon as we have a valid session.
+        forceSyncAll(supabase as any).catch(() => {});
+        return { ok: true };
+      } catch (err) {
+        lastErr = err;
+        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+      }
+    }
+    if (offlineUser) {
       setUser(offlineUser as AppUser);
       return { ok: true };
     }
+    return { ok: false, error: `Connexion impossible (${lastErr?.message || "réseau"}). Réessayez.` };
+
   };
 
   const logout = () => {

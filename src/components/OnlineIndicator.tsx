@@ -46,7 +46,7 @@ export function OnlineIndicator() {
           variant="outline"
           size="sm"
           onClick={handleSync}
-          disabled={!online || syncing}
+          disabled={syncing}
           className="h-7 px-2 text-[10px] gap-1 border-warning/40 text-warning hover:bg-warning/10"
           title={online ? "Synchroniser maintenant" : "Synchronisation à la reconnexion"}
         >
