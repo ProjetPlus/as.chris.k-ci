@@ -29,6 +29,15 @@ export function SyncQueueWidget() {
     else toast.info("Aucune opération en attente");
   };
 
+  const handleForce = async () => {
+    const result = await forceSyncAll(supabase as any);
+    setStats(getQueueStats());
+    if (result.flushed > 0) toast.success(`Forcé : ${result.flushed} opération(s) synchronisée(s)`);
+    else if (result.remaining > 0) toast.error("Forçage incomplet", { description: `${result.remaining} opération(s) restent en attente.` });
+    else toast.info("Aucune opération en attente");
+  };
+
+
   return (
     <Card className="border-border/50">
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
