@@ -202,6 +202,60 @@ export type Database = {
           },
         ]
       }
+      expenses: {
+        Row: {
+          amount: number
+          beneficiary: string
+          beneficiary_member_id: string | null
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          motif: string
+          nature: string
+          notes: string | null
+          payment_method: string
+          reference: string | null
+          responsible: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          beneficiary?: string
+          beneficiary_member_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          motif: string
+          nature?: string
+          notes?: string | null
+          payment_method?: string
+          reference?: string | null
+          responsible?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          beneficiary?: string
+          beneficiary_member_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          motif?: string
+          nature?: string
+          notes?: string | null
+          payment_method?: string
+          reference?: string | null
+          responsible?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       members: {
         Row: {
           adhesion_amount: number
@@ -456,6 +510,35 @@ export type Database = {
       current_session_role: { Args: never; Returns: string }
       current_session_token: { Args: never; Returns: string }
       delete_app_user: { Args: { p_id: string }; Returns: undefined }
+      get_card_settings: {
+        Args: never
+        Returns: {
+          association_name: string
+          initials: string
+          phone: string
+        }[]
+      }
+      get_member_card: {
+        Args: { p_member_id: string }
+        Returns: {
+          adhesion_amount: number
+          adhesion_paid: boolean
+          campement: string
+          contribution_status: string
+          first_name: string
+          guardian: Json
+          id: string
+          last_name: string
+          member_id: string
+          phone: string
+          photo: string
+          registration_date: string
+          secondary_members: Json
+          sous_prefecture: string
+          status: string
+          total_covered_persons: number
+        }[]
+      }
       has_valid_session: { Args: never; Returns: boolean }
       list_app_users: {
         Args: never
