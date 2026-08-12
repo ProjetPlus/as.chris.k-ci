@@ -228,7 +228,7 @@ function BackBody({ member, qr, settings }: { member: DbMember; qr: string; sett
 
 function Field({ label, value, mono, big, small }: { label: string; value: string; mono?: boolean; big?: boolean; small?: boolean }) {
   return (
-    <div>
+    <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: 9, color: BLUE_LABEL, letterSpacing: 1.4, fontWeight: 800 }}>{label}</div>
       <div style={{
         fontSize: big ? 22 : small ? 12.5 : 16, fontWeight: 800, color: big ? BORDEAUX : INK,
