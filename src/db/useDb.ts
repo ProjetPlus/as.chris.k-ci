@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import type { AppUser, DbContribution, DbDeath, DbMember, DbSettings, DbTreasury, TableName } from "@/db/database";
+import type { AppUser, DbContribution, DbDeath, DbExpense, DbMember, DbSettings, DbTreasury, TableName } from "@/db/database";
 import { supabase } from "@/integrations/supabase/client";
 import { enqueue, enqueueDeathPromotion, enqueueMemberBundle, flushQueue } from "@/lib/offline";
 import { DEFAULT_SETTINGS, buildDeathPromotionBundle, fullName, makeMember, nowIso, uuid } from "@/lib/memberWorkflow";
 
 const db = supabase as any;
 
-const SNAPSHOT_KEY = "aschrisk.db.snapshot.v5";
+const SNAPSHOT_KEY = "aschrisk.db.snapshot.v6";
 const CREATE_MEMBER_EVENT = "aschrisk:create-member";
 
-type Snapshot = { settings: DbSettings; members: DbMember[]; deaths: DbDeath[]; contributions: DbContribution[]; treasury: DbTreasury; users: AppUser[] };
+type Snapshot = { settings: DbSettings; members: DbMember[]; deaths: DbDeath[]; contributions: DbContribution[]; expenses: DbExpense[]; treasury: DbTreasury; users: AppUser[] };
 
 const emptyTreasury: DbTreasury = { id: "treasury-local", total_balance: 0, total_contributions_collected: 0, total_payouts: 0, retained_reserves: 0, pending_contributions: 0, updated_at: nowIso() };
-const initial: Snapshot = { settings: DEFAULT_SETTINGS, members: [], deaths: [], contributions: [], treasury: emptyTreasury, users: [] };
+const initial: Snapshot = { settings: DEFAULT_SETTINGS, members: [], deaths: [], contributions: [], expenses: [], treasury: emptyTreasury, users: [] };
 
 function readSnapshot(): Snapshot {
   try { return { ...initial, ...JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || "{}") }; } catch { return initial; }
@@ -50,7 +50,28 @@ function recalcTreasury(snap: Snapshot): DbTreasury {
   const payouts = snap.deaths.reduce((s, d) => s + Number(d.payout || 0), 0);
   const retained = snap.deaths.reduce((s, d) => s + Number(d.retained || 0), 0);
   const pending = snap.contributions.filter((c) => c.status === "non_payé" || c.status === "partiel").reduce((s, c) => s + Math.max(Number(c.expected_amount || 0) - Number(c.amount || 0), 0), 0);
-  return { id: snap.treasury.id || "treasury-local", total_balance: adhesions + collected - payouts + retained, total_contributions_collected: adhesions + collected, total_payouts: payouts, retained_reserves: retained, pending_contributions: pending, updated_at: nowIso() };
+  const expenses = (snap.expenses || []).filter((e) => e.status !== "annulé").reduce((s, e) => s + Number(e.amount || 0), 0);
+  return {
+    id: snap.treasury?.id || "treasury-local",
+    total_balance: adhesions + collected - payouts + retained - expenses,
+    total_contributions_collected: adhesions + collected,
+    total_payouts: payouts + expenses,
+    retained_reserves: retained,
+    pending_contributions: pending,
+    updated_at: nowIso(),
+  };
+}
+
+// Keeps the local snapshot authoritative AND pushes the recomputed treasury to
+// the server after every write, so the caisse is never left empty or stale.
+function syncTreasury(snap: Snapshot) {
+  const treasury = recalcTreasury(snap);
+  if (navigator.onLine) {
+    db.rpc("recalculate_treasury").then(({ error }: any) => {
+      if (error) db.from("treasury").upsert({ ...treasury, id: undefined }).then(() => {});
+    }).catch(() => {});
+  }
+  return treasury;
 }
 
 async function safeFetch<T>(table: TableName, fallback: T[]): Promise<T[]> {
@@ -61,15 +82,18 @@ async function safeFetch<T>(table: TableName, fallback: T[]): Promise<T[]> {
 
 export async function refreshFromServer() {
   const snap = readSnapshot();
-  const [settingsRows, members, deaths, contributions, treasuryRows] = await Promise.all([
+  const [settingsRows, members, deaths, contributions, expenses] = await Promise.all([
     safeFetch<DbSettings>("settings", [snap.settings]),
     safeFetch<DbMember>("members", snap.members),
     safeFetch<DbDeath>("deaths", snap.deaths),
     safeFetch<DbContribution>("contributions", snap.contributions),
-    safeFetch<DbTreasury>("treasury", [snap.treasury]),
+    safeFetch<DbExpense>("expenses", snap.expenses || []),
   ]);
   const normalizedMembers = members.map(normalizeMemberRow);
-  const next = { ...snap, settings: settingsRows[0] || snap.settings, members: normalizedMembers, deaths, contributions, treasury: treasuryRows[0] || recalcTreasury({ ...snap, members: normalizedMembers, deaths, contributions }) };
+  const base = { ...snap, settings: settingsRows[0] || snap.settings, members: normalizedMembers, deaths, contributions, expenses };
+  // The treasury is ALWAYS recomputed from the source rows — a stale/zero server
+  // row must never blank the caisse.
+  const next = { ...base, treasury: recalcTreasury(base) };
   writeSnapshot(next);
   return next;
 }
@@ -103,7 +127,7 @@ async function persist(table: TableName, payload: any, op: "insert" | "update" |
 export function createMemberOfflineFirst(input: Partial<DbMember>) {
   const current = readSnapshot();
   const member = normalizeMemberRow(makeMember(input, current.members, current.settings));
-  patchSnapshot((s) => ({ ...s, members: [member, ...s.members], treasury: recalcTreasury({ ...s, members: [member, ...s.members] }) }));
+  patchSnapshot((s) => ({ ...s, members: [member, ...s.members], treasury: syncTreasury({ ...s, members: [member, ...s.members] }) }));
   enqueueMemberBundle(member);
   if (navigator.onLine) flushQueue(supabase, { force: true }).catch(() => {});
   window.dispatchEvent(new CustomEvent(CREATE_MEMBER_EVENT, { detail: member }));
@@ -124,7 +148,7 @@ export function useMembers() {
   const snap = useSnapshot();
   const createMember = async (input: Partial<DbMember>) => {
     const member = normalizeMemberRow(makeMember(input, readSnapshot().members, readSnapshot().settings));
-    patchSnapshot((s) => ({ ...s, members: [member, ...s.members], treasury: recalcTreasury({ ...s, members: [member, ...s.members] }) }));
+    patchSnapshot((s) => ({ ...s, members: [member, ...s.members], treasury: syncTreasury({ ...s, members: [member, ...s.members] }) }));
     enqueueMemberBundle(member);
     if (navigator.onLine) await flushQueue(supabase, { force: true });
     return member;
@@ -133,7 +157,7 @@ export function useMembers() {
     let member: DbMember | undefined;
     patchSnapshot((s) => {
       const members = s.members.map((m) => m.id === id ? (member = normalizeMemberRow(makeMember({ ...m, ...patch, id: m.id, member_id: m.member_id, created_at: m.created_at }, s.members, s.settings)))! : m);
-      return { ...s, members, treasury: recalcTreasury({ ...s, members }) };
+      return { ...s, members, treasury: syncTreasury({ ...s, members }) };
     });
     if (member) {
       enqueueMemberBundle(member);
@@ -159,7 +183,7 @@ export function useDeaths() {
       const members = [bundle.updatedDeceased, ...(bundle.successor ? [bundle.successor] : []), ...old.members.filter((m) => m.id !== bundle.updatedDeceased.id)];
       const deaths = [bundle.death, ...old.deaths];
       const contributions = [...bundle.contributions, ...old.contributions];
-      return { ...old, members, deaths, contributions, treasury: recalcTreasury({ ...old, members, deaths, contributions }) };
+      return { ...old, members, deaths, contributions, treasury: syncTreasury({ ...old, members, deaths, contributions }) };
     });
     if (!navigator.onLine) enqueueDeathPromotion(bundle); else {
       await persist("members", bundle.updatedDeceased);
@@ -178,14 +202,56 @@ export function useContributions() {
     let contribution: DbContribution | undefined;
     patchSnapshot((s) => {
       const contributions = s.contributions.map((c) => c.id === id ? (contribution = { ...c, ...patch })! : c);
-      return { ...s, contributions, treasury: recalcTreasury({ ...s, contributions }) };
+      return { ...s, contributions, treasury: syncTreasury({ ...s, contributions }) };
     });
     if (contribution) await persist("contributions", contribution);
   };
   return { contributions: snap.contributions, updateContribution };
 }
 
-export function useTreasury() { return { treasury: useSnapshot().treasury }; }
+export function useExpenses() {
+  const snap = useSnapshot();
+  const saveExpense = async (input: Partial<DbExpense>) => {
+    const at = nowIso();
+    const existing = input.id ? (readSnapshot().expenses || []).find((e) => e.id === input.id) : undefined;
+    const expense: DbExpense = {
+      id: input.id || uuid(),
+      date: input.date || new Date().toISOString().slice(0, 10),
+      motif: input.motif || "",
+      nature: (input.nature as DbExpense["nature"]) || "autre",
+      amount: Number(input.amount || 0),
+      beneficiary: input.beneficiary || "",
+      beneficiary_member_id: input.beneficiary_member_id || "",
+      responsible: input.responsible || "",
+      payment_method: (input.payment_method as DbExpense["payment_method"]) || "especes",
+      reference: input.reference || "",
+      status: (input.status as DbExpense["status"]) || "validé",
+      notes: input.notes || "",
+      created_by: input.created_by || existing?.created_by || "",
+      created_at: existing?.created_at || at,
+      updated_at: at,
+    };
+    patchSnapshot((s) => {
+      const expenses = [expense, ...(s.expenses || []).filter((e) => e.id !== expense.id)];
+      return { ...s, expenses, treasury: syncTreasury({ ...s, expenses }) };
+    });
+    await persist("expenses", expense);
+    return expense;
+  };
+  const deleteExpense = async (id: string) => {
+    patchSnapshot((s) => {
+      const expenses = (s.expenses || []).filter((e) => e.id !== id);
+      return { ...s, expenses, treasury: syncTreasury({ ...s, expenses }) };
+    });
+    await persist("expenses", { id }, "delete");
+  };
+  return { expenses: snap.expenses || [], saveExpense, deleteExpense };
+}
+
+export function useTreasury() {
+  const snap = useSnapshot();
+  return { treasury: snap.treasury, expenses: snap.expenses || [] };
+}
 
 export function useDashboardData() {
   const snap = useSnapshot();

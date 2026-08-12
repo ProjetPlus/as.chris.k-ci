@@ -46,7 +46,7 @@ export type DbMember = {
   photo?: string;
   id_card_front?: string;
   registration_date: string;
-  status: "actif" | "suspendu" | "décédé";
+  status: "actif" | "suspendu" | "décédé" | "archivé";
   adhesion_paid: boolean;
   adhesion_amount: number;
   adhesion_payment_method?: string;
@@ -120,4 +120,22 @@ export type DbTreasury = {
   updated_at: string;
 };
 
-export type TableName = "settings" | "members" | "deaths" | "contributions" | "treasury" | "app_users";
+export type DbExpense = {
+  id: string;
+  date: string;
+  motif: string;
+  nature: "pret" | "assistance_maladie" | "soutien" | "funerailles" | "fonctionnement" | "autre";
+  amount: number;
+  beneficiary: string;
+  beneficiary_member_id?: string;
+  responsible: string;
+  payment_method: "especes" | "wave" | "orange" | "mtn" | "moov" | "virement";
+  reference?: string;
+  status: "validé" | "en_attente" | "annulé";
+  notes?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TableName = "settings" | "members" | "deaths" | "contributions" | "treasury" | "app_users" | "expenses";

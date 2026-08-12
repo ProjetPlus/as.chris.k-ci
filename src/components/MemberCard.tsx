@@ -145,7 +145,7 @@ function FrontBody({ member }: { member: DbMember }) {
       </div>
 
       {/* Identity rows */}
-      <div style={{ position: "absolute", top: 196, left: 30, right: 236, display: "grid", gap: 8 }}>
+      <div style={{ position: "absolute", top: 196, left: 30, right: 236, display: "flex", flexDirection: "column", gap: 8 }}>
         <Row label="NOM" value={clean(member.last_name).toUpperCase()} strong />
         <Row label="PRÉNOMS" value={clean(member.first_name).toUpperCase()} strong />
         <Row label="N° MEMBRE" value={clean(member.member_id)} mono />
@@ -172,10 +172,10 @@ function FrontBody({ member }: { member: DbMember }) {
 
 function Row({ label, value, mono, strong }: { label: string; value: string; mono?: boolean; strong?: boolean }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "132px 1fr", alignItems: "baseline", columnGap: 10 }}>
-      <div style={{ fontSize: 12.5, fontWeight: 800, color: BLUE_LABEL, letterSpacing: 0.4 }}>{label} :</div>
+    <div style={{ display: "flex", flexDirection: "row", alignItems: "baseline", columnGap: 10 }}>
+      <div style={{ width: 132, flex: "0 0 132px", fontSize: 12.5, fontWeight: 800, color: BLUE_LABEL, letterSpacing: 0.4 }}>{label} :</div>
       <div style={{
-        fontSize: strong ? 17 : 15, fontWeight: strong ? 900 : 700, color: INK,
+        flex: 1, minWidth: 0, fontSize: strong ? 17 : 15, fontWeight: strong ? 900 : 700, color: INK,
         fontFamily: mono ? "'JetBrains Mono', monospace" : undefined, lineHeight: 1.15,
         whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
       }}>{value || "—"}</div>
@@ -205,15 +205,15 @@ function BackBody({ member, qr, settings }: { member: DbMember; qr: string; sett
         </div>
       )}
 
-      <div style={{ position: "absolute", top: 216, right: 30, width: 456, display: "grid", gap: 13 }}>
+      <div style={{ position: "absolute", top: 216, right: 30, width: 456, display: "flex", flexDirection: "column", gap: 13 }}>
         <Field label="N° MEMBRE" value={clean(member.member_id)} mono big />
         <Field label="TITULAIRE" value={clean(fullName(member)).toUpperCase()} />
         <Field label="PERSONNE DE TUTEL" value={guardianName(member) || "—"} />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "row", gap: 10 }}>
           <Field label="ÉMISE LE" value={fmtDate(member.registration_date)} small />
           <Field label="STATUT" value={clean(member.status).toUpperCase()} small />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "row", gap: 10 }}>
           <Field label="PERS. COUVERTES" value={String(member.total_covered_persons ?? 1)} small />
           <Field label="COTISATIONS" value={clean(member.contribution_status).replace(/_/g, " ").toUpperCase()} small />
         </div>
@@ -228,7 +228,7 @@ function BackBody({ member, qr, settings }: { member: DbMember; qr: string; sett
 
 function Field({ label, value, mono, big, small }: { label: string; value: string; mono?: boolean; big?: boolean; small?: boolean }) {
   return (
-    <div>
+    <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: 9, color: BLUE_LABEL, letterSpacing: 1.4, fontWeight: 800 }}>{label}</div>
       <div style={{
         fontSize: big ? 22 : small ? 12.5 : 16, fontWeight: 800, color: big ? BORDEAUX : INK,
