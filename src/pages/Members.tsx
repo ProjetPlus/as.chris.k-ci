@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectItem } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useMembers, useSettings } from "@/db/useDb";
 import { MemberPhoto } from "@/components/MemberPhoto";
 import { PageTitle, fmtDate, money } from "@/pages/pageUtils";
@@ -125,25 +124,28 @@ export default function Members() {
         {list.length === 0 && <div className="rounded-lg border bg-card p-8 text-center text-muted-foreground">Aucun membre pour ce filtre.</div>}
       </div>
 
-      <Dialog open={payFor !== null} onOpenChange={(o) => !o && setPayFor(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Paiement d'adhésion — {payFor ? fullName(payFor) : ""}</DialogTitle></DialogHeader>
-          <div className="grid gap-3">
-            <div><Label>Montant FCFA</Label><Input type="number" value={pay.adhesion_amount ?? ""} onChange={(e) => setPay({ ...pay, adhesion_amount: e.target.value })} /></div>
-            <div><Label>Moyen de paiement</Label>
-              <Select value={pay.adhesion_payment_method} onValueChange={(v) => setPay({ ...pay, adhesion_payment_method: v })}>
-                {PAYMENT_METHODS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-              </Select>
+      {payFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setPayFor(null)}>
+          <div className="w-full max-w-md rounded-lg border bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-4 text-lg font-semibold">Paiement d'adhésion — {fullName(payFor)}</h2>
+            <div className="grid gap-3">
+              <div><Label>Montant FCFA</Label><Input type="number" value={pay.adhesion_amount ?? ""} onChange={(e) => setPay({ ...pay, adhesion_amount: e.target.value })} /></div>
+              <div><Label>Moyen de paiement</Label>
+                <Select value={pay.adhesion_payment_method} onValueChange={(v) => setPay({ ...pay, adhesion_payment_method: v })}>
+                  {PAYMENT_METHODS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                </Select>
+              </div>
+              <div><Label>Date du paiement</Label><Input type="date" value={pay.adhesion_payment_date || ""} onChange={(e) => setPay({ ...pay, adhesion_payment_date: e.target.value })} /></div>
+              <div><Label>ID transaction (mobile money)</Label><Input value={pay.adhesion_transaction_id || ""} onChange={(e) => setPay({ ...pay, adhesion_transaction_id: e.target.value, adhesion_proof_type: "transaction_id" })} /></div>
             </div>
-            <div><Label>Date du paiement</Label><Input type="date" value={pay.adhesion_payment_date || ""} onChange={(e) => setPay({ ...pay, adhesion_payment_date: e.target.value })} /></div>
-            <div><Label>ID transaction (mobile money)</Label><Input value={pay.adhesion_transaction_id || ""} onChange={(e) => setPay({ ...pay, adhesion_transaction_id: e.target.value, adhesion_proof_type: "transaction_id" })} /></div>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setPayFor(null)}>Annuler</Button>
+              <Button onClick={savePay}>Enregistrer le paiement</Button>
+            </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPayFor(null)}>Annuler</Button>
-            <Button onClick={savePay}>Enregistrer le paiement</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
+
     </div>
   );
 }
