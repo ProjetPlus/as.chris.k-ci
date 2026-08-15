@@ -498,6 +498,15 @@ export type Database = {
           username: string
         }[]
       }
+      can_write_session: { Args: never; Returns: boolean }
+      change_app_user_password: {
+        Args: {
+          p_new_password: string
+          p_old_password: string
+          p_username: string
+        }
+        Returns: undefined
+      }
       create_app_user: {
         Args: {
           p_display_name: string

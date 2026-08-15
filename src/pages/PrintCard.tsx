@@ -68,7 +68,12 @@ export default function PrintCard() {
       if (conf) setSettings({ ...DEFAULT_SETTINGS, ...conf });
       setMember(toMember(row));
     } catch (e: any) {
-      setError(e?.message || "Recherche impossible. Vérifiez votre connexion.");
+      const msg = String(e?.message || "");
+      setError(
+        /not authorized/i.test(msg)
+          ? "Session requise : connectez-vous à AS.CHRIS.K pour imprimer une carte."
+          : msg || "Recherche impossible. Vérifiez votre connexion.",
+      );
     } finally {
       setLoading(false);
     }
