@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, Skull, Coins, Landmark, BarChart3,
-  CreditCard, ScanLine, Settings, Shield, RefreshCw
+  CreditCard, ScanLine, Settings, Shield, RefreshCw, Printer, Wallet
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { OFFICIAL_ASCHRISK_LOGO_URL } from "@/assets/aschriskOfficialLogo";
@@ -20,10 +20,13 @@ const mainItems = [
 const managementItems = [
   { title: "Décès & Versements", url: "/deaths", icon: Skull },
   { title: "Cotisations", url: "/contributions", icon: Coins },
+  { title: "Dépenses exceptionnelles", url: "/expenses", icon: Wallet },
   { title: "Caisse", url: "/treasury", icon: Landmark },
   { title: "Rapports", url: "/reports", icon: BarChart3 },
   { title: "Cartes à imprimer", url: "/cards", icon: CreditCard },
+  { title: "Impression carte", url: "/print", icon: Printer },
 ];
+
 
 const adminItems = [
   { title: "Gestion des accès", url: "/access", icon: Shield },

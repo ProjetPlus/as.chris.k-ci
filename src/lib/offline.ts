@@ -286,23 +286,39 @@ export async function flushQueue(client: SupabaseClient, opts: { force?: boolean
 }
 
 
+// Waits (max ~10s) for an in-flight flush to finish so a forced sync is never
+// silently skipped because another pass was already running.
+async function waitForIdle(maxMs = 10000) {
+  const start = Date.now();
+  while (syncing && Date.now() - start < maxMs) {
+    await new Promise((r) => setTimeout(r, 250));
+  }
+}
+
 // Force EVERY pending operation now: clears backoff timers and repeats passes
 // until nothing more can be flushed. Used by the "Tout forcer" action and login.
 export async function forceSyncAll(client: SupabaseClient, maxPasses = 5) {
-  const q = getQueue().map((e) => ({ ...e, attempts: 0, lastAttemptAt: 0 } as QueueEntry));
+  await waitForIdle();
+  const q = getQueue().map((e) => ({ ...e, attempts: 0, lastAttemptAt: 0, status: "pending" } as QueueEntry));
   setQueue(q);
   let flushed = 0;
   let failed = 0;
   let remaining = q.length;
   for (let i = 0; i < maxPasses; i++) {
+    await waitForIdle();
     const r = await flushQueue(client, { force: true });
     flushed += r.flushed;
     failed = r.failed;
     remaining = r.remaining;
     if (r.remaining === 0 || r.flushed === 0) break;
+    // Reset backoff again between passes so nothing is deferred.
+    setQueue(getQueue().map((e) => ({ ...e, attempts: 0, lastAttemptAt: 0 } as QueueEntry)));
   }
+  if (remaining === 0) write(LAST_SYNC_KEY, Date.now());
+  console.info(`[sync] force terminé : ${flushed} OK, ${failed} en échec, ${remaining} restant(s)`);
   return { flushed, failed, remaining };
 }
+
 
 
 export function startAutoSync(client: SupabaseClient, intervalMs = 15000) {
