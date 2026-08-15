@@ -46,5 +46,16 @@ registerAppServiceWorker().catch(() => {});
 
 // Auto-sync loop: retry failed mutations periodically + on every online event.
 startAutoSync(supabase, 15000);
-// Also flush immediately on the explicit online event (already handled inside startAutoSync but kept for first run)
-if (navigator.onLine) setTimeout(() => { flushQueue(supabase, { force: true }).catch(() => {}); }, 2000);
+// At boot: if anything is pending, force a full multi-pass sync (ignores backoff).
+if (navigator.onLine) {
+  setTimeout(() => {
+    if (getQueue().length > 0) forceSyncAll(supabase).catch(() => {});
+    else flushQueue(supabase, { force: true }).catch(() => {});
+  }, 2000);
+}
+// Every time the network comes back, force everything again — mobile devices
+// often reconnect briefly and must not miss the window.
+window.addEventListener("online", () => {
+  setTimeout(() => { forceSyncAll(supabase).catch(() => {}); }, 1000);
+});
+
