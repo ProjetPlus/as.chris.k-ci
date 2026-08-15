@@ -30,6 +30,8 @@ const importCards = () => import("./pages/Cards");
 const importAccess = () => import("./pages/AccessManagement");
 const importSettings = () => import("./pages/Settings");
 const importSync = () => import("./pages/Sync");
+const importExpenses = () => import("./pages/Expenses");
+const importPrintCard = () => import("./pages/PrintCard");
 const importNotFound = () => import("./pages/NotFound");
 
 const Dashboard = lazy(importDashboard);
@@ -46,6 +48,8 @@ const Cards = lazy(importCards);
 const AccessManagement = lazy(importAccess);
 const SettingsPage = lazy(importSettings);
 const Sync = lazy(importSync);
+const Expenses = lazy(importExpenses);
+const PrintCard = lazy(importPrintCard);
 const NotFound = lazy(importNotFound);
 
 /**
@@ -64,7 +68,7 @@ function schedulePrefetch() {
     idle(() => {
       importRegisterStep1(); importRegisterStep2(); importMemberProfile();
       importContributions(); importDeaths(); importTreasury();
-      importReports(); importCards(); importSettings(); importSync(); importAccess(); importNotFound();
+      importReports(); importCards(); importExpenses(); importPrintCard(); importSettings(); importSync(); importAccess(); importNotFound();
     });
   });
 }
@@ -111,6 +115,8 @@ const AppRoutes = () => {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/mcp-login" element={<McpLogin />} />
+          <Route path="/print" element={<PrintCard />} />
+          <Route path="/impression" element={<Navigate to="/print" replace />} />
           <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
 
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
@@ -127,6 +133,8 @@ const AppRoutes = () => {
             <Route path="/deces" element={<Navigate to="/deaths" replace />} />
             <Route path="/contributions" element={<Contributions />} />
             <Route path="/cotisations" element={<Navigate to="/contributions" replace />} />
+            <Route path="/expenses" element={<Expenses />} />
+            <Route path="/depenses" element={<Navigate to="/expenses" replace />} />
             <Route path="/treasury" element={<Treasury />} />
             <Route path="/caisse" element={<Navigate to="/treasury" replace />} />
             <Route path="/scanner" element={<Scanner />} />
