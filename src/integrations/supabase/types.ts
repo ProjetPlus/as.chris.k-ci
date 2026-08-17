@@ -519,7 +519,36 @@ export type Database = {
       current_session_role: { Args: never; Returns: string }
       current_session_token: { Args: never; Returns: string }
       delete_app_user: { Args: { p_id: string }; Returns: undefined }
+      find_member_card_public: {
+        Args: { p_query: string }
+        Returns: {
+          adhesion_amount: number
+          adhesion_paid: boolean
+          campement: string
+          contribution_status: string
+          first_name: string
+          guardian: Json
+          id: string
+          last_name: string
+          member_id: string
+          phone: string
+          photo: string
+          registration_date: string
+          secondary_members: Json
+          sous_prefecture: string
+          status: string
+          total_covered_persons: number
+        }[]
+      }
       get_card_settings: {
+        Args: never
+        Returns: {
+          association_name: string
+          initials: string
+          phone: string
+        }[]
+      }
+      get_card_settings_public: {
         Args: never
         Returns: {
           association_name: string
