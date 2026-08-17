@@ -36,6 +36,44 @@ function toMember(row: any): DbMember {
   } as DbMember;
 }
 
+const CACHE_KEY = "aschrisk.print.cache.v1";
+const SNAPSHOT_KEY = "aschrisk.db.snapshot.v6";
+
+const norm = (v: string) => (v || "").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+const tail = (v: string) => (v || "").replace(/\D/g, "").slice(-10);
+
+type CacheShape = { members: Record<string, any>; settings?: any };
+
+function readCache(): CacheShape {
+  try { return { members: {}, ...JSON.parse(localStorage.getItem(CACHE_KEY) || "{}") }; } catch { return { members: {} }; }
+}
+
+function writeCache(row: any, conf: any) {
+  const cache = readCache();
+  const keys = [norm(row.member_id), tail(row.phone)].filter((k) => k && k.length >= 6);
+  keys.forEach((k) => { cache.members[k] = row; });
+  if (conf) cache.settings = conf;
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch { /* quota */ }
+}
+
+/** Offline lookup: printed-card cache first, then the full local app snapshot. */
+function findLocally(q: string): { row: any; conf: any } | null {
+  const key = norm(q);
+  const phone = tail(q);
+  const cache = readCache();
+  const cached = cache.members[key] || (phone.length >= 8 ? cache.members[phone] : undefined);
+  if (cached) return { row: cached, conf: cache.settings };
+  try {
+    const snap = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || "{}");
+    const row = (snap.members || []).find(
+      (m: any) => norm(m.member_id) === key ||
+        (phone.length >= 8 && (tail(m.phone) === phone || tail(m.phone_secondary) === phone)),
+    );
+    if (row) return { row, conf: snap.settings };
+  } catch { /* ignore */ }
+  return null;
+}
+
 export default function PrintCard() {
   const [query, setQuery] = useState("");
   const [member, setMember] = useState<DbMember | null>(null);
@@ -43,36 +81,52 @@ export default function PrintCard() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<null | "print" | "pdf">(null);
   const [error, setError] = useState("");
+  const [offline, setOffline] = useState(false);
 
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
 
+  const apply = (row: any, conf: any, fromCache: boolean) => {
+    if (conf) setSettings({ ...DEFAULT_SETTINGS, ...conf });
+    setMember(toMember(row));
+    setOffline(fromCache);
+  };
+
   const search = async () => {
     const id = query.trim();
     if (!id) return;
+    if (norm(id).length < 6) {
+      setError("Saisissez un numéro de téléphone complet ou un numéro de membre.");
+      return;
+    }
     setLoading(true);
     setError("");
+    setOffline(false);
+    const local = findLocally(id);
     try {
+      if (!navigator.onLine) throw new Error("offline");
       const [{ data, error: err }, { data: s }] = await Promise.all([
-        db.rpc("get_member_card", { p_member_id: id }),
-        db.rpc("get_card_settings"),
+        db.rpc("find_member_card_public", { p_query: id }),
+        db.rpc("get_card_settings_public"),
       ]);
       if (err) throw err;
       const row = Array.isArray(data) ? data[0] : data;
+      const conf = Array.isArray(s) ? s[0] : s;
       if (!row) {
+        if (local) { apply(local.row, local.conf, true); return; }
         setMember(null);
-        setError(`Aucun membre trouvé pour le numéro « ${id} ».`);
+        setError(`Aucun membre trouvé pour « ${id} ».`);
         return;
       }
-      const conf = Array.isArray(s) ? s[0] : s;
-      if (conf) setSettings({ ...DEFAULT_SETTINGS, ...conf });
-      setMember(toMember(row));
+      writeCache(row, conf);
+      apply(row, conf, false);
     } catch (e: any) {
-      const msg = String(e?.message || "");
+      if (local) { apply(local.row, local.conf, true); return; }
+      setMember(null);
       setError(
-        /not authorized/i.test(msg)
-          ? "Session requise : connectez-vous à AS.CHRIS.K pour imprimer une carte."
-          : msg || "Recherche impossible. Vérifiez votre connexion.",
+        navigator.onLine
+          ? String(e?.message || "Recherche impossible.")
+          : `Hors ligne : aucune carte enregistrée localement pour « ${id} ».`,
       );
     } finally {
       setLoading(false);
