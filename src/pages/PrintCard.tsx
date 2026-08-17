@@ -166,7 +166,8 @@ export default function PrintCard() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && search()}
-            placeholder="Numéro de membre (ex. A-26-001)"
+            placeholder="Téléphone (ex. 0102806057) ou numéro de membre"
+            inputMode="tel"
             className="flex-1"
           />
           <Button onClick={search} disabled={loading}>
@@ -175,6 +176,11 @@ export default function PrintCard() {
         </section>
 
         {error && <p className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">{error}</p>}
+        {offline && member && (
+          <p className="mt-4 rounded-md border border-primary/40 bg-primary/10 p-3 text-sm text-foreground">
+            Carte affichée depuis la sauvegarde locale (hors ligne).
+          </p>
+        )}
 
         {member && (
           <>
