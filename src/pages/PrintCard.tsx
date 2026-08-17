@@ -157,7 +157,7 @@ export default function PrintCard() {
           <img src={OFFICIAL_ASCHRISK_LOGO_URL} alt="AS.CHRIS.K" className="h-16 w-auto" />
           <div>
             <h1 className="font-display text-2xl font-bold text-foreground">Portail d'impression AS.CHRIS.K</h1>
-            <p className="text-sm text-muted-foreground">Lecture seule — saisissez un numéro de membre pour imprimer ou télécharger sa carte.</p>
+            <p className="text-sm text-muted-foreground">Sans connexion au compte — saisissez le numéro de téléphone (ou le numéro de membre) pour imprimer ou télécharger la carte.</p>
           </div>
         </header>
 
