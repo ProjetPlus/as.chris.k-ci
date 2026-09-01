@@ -4,6 +4,7 @@ import type { DbMember, DbSettings } from "@/db/database";
 import { fullName } from "@/lib/memberWorkflow";
 import { fmtDate } from "@/pages/pageUtils";
 import { OFFICIAL_ASCHRISK_LOGO_URL } from "@/assets/aschriskOfficialLogo";
+import { normalizeFramedPhoto } from "@/lib/photoFrame";
 import flag from "@/assets/flag-civ.png";
 
 // CR-80 landscape rendered at fixed pixel size for pixel-perfect html2canvas capture.
@@ -11,6 +12,8 @@ export const CARD_W_MM = 85.6;
 export const CARD_H_MM = 53.98;
 export const CARD_W_PX = 856;
 export const CARD_H_PX = 540;
+export const PHOTO_W = 176;
+export const PHOTO_H = 220;
 
 const clean = (v: unknown) => String(v ?? "").replace(/\//g, " ");
 
@@ -117,9 +120,19 @@ export const MemberCard = forwardRef<HTMLDivElement, Props>(function MemberCard(
 });
 
 function FrontBody({ member }: { member: DbMember }) {
-  const photo = member.photo && !member.photo.startsWith("data:")
+  const raw = member.photo && !member.photo.startsWith("data:")
     ? `${member.photo}${member.photo.includes("?") ? "&" : "?"}v=${encodeURIComponent(member.updated_at || "")}`
     : member.photo;
+  const [photo, setPhoto] = useState(raw || "");
+  useEffect(() => {
+    let alive = true;
+    if (!raw) { setPhoto(""); return; }
+    setPhoto(raw);
+    normalizeFramedPhoto(raw, PHOTO_W / PHOTO_H, 704)
+      .then((d) => { if (alive && d) setPhoto(d); })
+      .catch(() => { /* on garde l'original */ });
+    return () => { alive = false; };
+  }, [raw]);
 
   return (
     <>
@@ -131,17 +144,14 @@ function FrontBody({ member }: { member: DbMember }) {
         fontWeight: 900, fontSize: 26, letterSpacing: 2,
       }}>CARTE DE MEMBRE</div>
 
-      {/* Photo */}
+      {/* Photo — remplit toujours le cadre bleu (recadrage automatique) */}
       <div style={{
-        position: "absolute", top: 138, right: 30, width: 176, height: 220,
-        borderRadius: 6, background: "#E8E6E1", border: `3px solid ${BLUE}`,
-        overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center",
+        position: "absolute", top: 138, right: 30, width: PHOTO_W, height: PHOTO_H,
+        borderRadius: 6, background: photo ? `#E8E6E1 url(${photo}) center center / cover no-repeat` : "#E8E6E1",
+        border: `3px solid ${BLUE}`, overflow: "hidden",
+        display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        {photo ? (
-          <img src={photo} alt="" crossOrigin="anonymous" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          <span style={{ color: BORDEAUX, fontWeight: 800, fontSize: 13, letterSpacing: 2 }}>PHOTO</span>
-        )}
+        {!photo && <span style={{ color: BORDEAUX, fontWeight: 800, fontSize: 13, letterSpacing: 2 }}>PHOTO</span>}
       </div>
 
       {/* Identity rows */}
